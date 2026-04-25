@@ -37,8 +37,7 @@ def chat_with_openai(user_id, user_message):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conversations[update.effective_user.id] = []
     await update.message.reply_text("👋 Welcome to Bit28! 
-    Ask me anything about Bit28, Investment/PAMM setup, or agent functionality and registration. 
-    ⚠️ Trading involves risk. Not financial advice.")
+    How can I help you today?")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
