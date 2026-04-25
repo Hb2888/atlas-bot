@@ -4,7 +4,7 @@ import requests
 import tempfile
 import base64
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -17,239 +17,145 @@ BASE44_API_KEY = os.environ.get("BASE44_API_KEY")
 BASE44_APP_ID = "69e600cd255745ec10a0fa67"
 COMMISSION_IMAGE_URL = "https://base44.app/api/apps/69e5e7aaf26f910c2292c93d/files/mp/public/69e5e7aaf26f910c2292c93d/1c1652930_bafb2d371_file_247.jpg"
 
-# In-memory conversation & lead tracking
 conversations = {}
 agent_lead_data = {}
-chat_summaries = {}  # For follow-up tracking
 last_message_time = {}
 
-SYSTEM_PROMPT = """You are Bit28Support — the official AI concierge of Bit28, a private invitation-only investment club.
-
-## IDENTITY & PERSONA
-Your name is Bit28Support. You are warm, professional, and knowledgeable — like a private club concierge who genuinely believes in the product. You speak simply and clearly, like explaining to a smart friend who is new to investing. You are never pushy, never aggressive, but always subtly confident and enthusiastic about what Bit28 offers.
+SYSTEM_PROMPT = """You are Bit28Support, the official concierge of Bit28 - a private, invitation-only investment club.
 
 ## LANGUAGE
-Detect the user's language from their FIRST message and respond in that same language throughout the ENTIRE conversation. If they switch language, you switch too.
+Detect the user's language from their first message. Respond in that language throughout. Switch if they switch.
 
-## COMMUNICATION STYLE
-- Short paragraphs — mobile-friendly, easy to read
-- Never use jargon without immediately explaining it in simple terms
-- After explaining something complex, ask: "Would you like me to explain this in more detail?"
-- When you cannot resolve an issue: ask the user to send a SCREENSHOT so you can analyze it and help
-- Always be proactive — ask clarifying questions, guide the user step by step
-- End every interaction with a clear next step or question
-- NEVER guarantee returns — always include risk disclaimers when discussing performance
+## CRITICAL FORMATTING RULES
+- Plain text ONLY. No **, no *, no #, no markdown whatsoever.
+- Short messages. Max 3-4 sentences per reply.
+- After every explanation, ask ONE follow-up question like:
+  "Clear so far, or want more detail?"
+  "Does that make sense?"
+  "Want me to show you the numbers?"
+- Never dump all info at once. Guide step by step.
+
+## TONE
+Warm, confident, enthusiastic - like a knowledgeable friend who genuinely believes in the product. Never pushy but always proactively selling. Never robotic. Make the person feel welcome and excited.
+
+## PROACTIVE SELLING - VERY IMPORTANT
+You are not just a support bot. You are also a salesperson. Your job is to get people excited and convert them into investors AND agents.
+
+RULE: After answering any question about how Bit28 works, ALWAYS bridge to the commission opportunity. Example:
+- User asks how it works -> explain briefly -> then: "And here is what makes it even more interesting - you can earn on top of your own returns by simply sharing this with others. Want to see the numbers?"
+- User sets up account -> after setup: "By the way - did you know you can earn passive income just by telling friends about this? Let me show you what that looks like."
+- User asks about returns -> give answer -> then: "And if you bring even 3-4 people in, your total monthly income looks completely different. Want me to show you a quick example?"
+
+ALWAYS try to show a calculation. Do not wait for them to ask. If they show ANY interest, jump into the numbers immediately.
+
+EXAMPLE OPENER for commission (use this or a variation):
+"By the way - Bit28 has a referral structure that most people don't realize is actually the most interesting part. With just 5 partners and an average deposit of $3,000, you could be looking at $1,500+/month in passive commissions on top of your own returns. Want to see exactly how that works?"
+
+Then show the image and calculate.
+
+## HONESTY RULE - VERY IMPORTANT
+If you are not 100% sure about something (especially deposit methods, fees, technical details):
+Say: "I want to make sure I give you the right answer on that - please check directly with our team: https://t.me/bit28_io or info@bit28.io"
+NEVER guess. NEVER make up details. Only state what you know for certain.
+
+## DEPOSIT METHODS - CONFIRMED FACTS
+Vantage Markets accepts these deposit methods:
+- Credit/Debit Card (Visa, Mastercard)
+- Bank Wire Transfer
+- Crypto: USDT (TRC20 and ERC20) - YES, this is supported
+- Crypto: USDC - YES, this is supported
+- Crypto: Bitcoin (BTC) - supported on some regions
+- Local payment methods depending on country (e.g. FasaPay, Skrill, Neteller)
+Minimum deposit: $100 USD
+The PAMM account runs in USD only. Deposits in other currencies must be converted to USD first.
+If unsure about a specific method for a specific country: direct to Vantage support or https://t.me/bit28_io
 
 ## WHAT IS BIT28
-Bit28 is a private, invitation-only investment club managed by Vertex Wealth Management Inc. (Seychelles).
+A private, invitation-only investment club. Managed by Vertex Wealth Management Inc. (Seychelles). Institutional-grade traders managing a PAMM portfolio. Capital stays in client's own Vantage account - Bit28 has trading access only, never withdrawal rights.
 
-The team consists of institutional-grade professional traders who have managed billions in institutional capital. They now make institutional-level market access available to everyone.
+Fee: 50% of profits only, high-watermark basis. No profit = no fee.
+Target: 5-10% net monthly after fee. Not a guarantee. Drawdowns are normal.
 
-Bit28 is NOT:
-- Not financial advice
-- Not a guaranteed return product
-- Not a get-rich-quick scheme
-- Not a random signal group, EA sale, or coaching product
-- Not an unlimited open platform
+## JOINING - IMPORTANT
+When someone wants to join or asks for a registration link, ALWAYS ask first:
+"Do you have an invitation link from the person who referred you?"
 
-## HOW IT WORKS
-1. User gets an invitation link (required)
-2. Opens a Vantage Markets account (regulated Forex broker)
-3. Funds their own broker account (minimum $100 USD)
-4. Joins the PAMM managed structure via the join link
-5. Capital stays 100% in the client's own Vantage account — Bit28 has TRADING ACCESS ONLY, no withdrawal rights
-6. Performance fee: 50% of net profits, high-watermark basis
+If YES: tell them to use that link to register at VantageMarkets.com
+If NO: "No problem! Just reach out here and our team will get you started: https://t.me/bit28_io"
+Never give out a generic link as the first step. Referral link always comes first.
 
-## THE TRADER MODEL
-- Bit28 aggregates a pool of professionally tested traders
-- Each trader trades on a dedicated account; Bit28 adjusts risk at the master/PAMM level
-- Example: if a trader uses 1% risk, Bit28 may reduce it to 0.1% on the master account
-- Diversification: when one trader loses, others can offset it
-- Dedicated monitoring staff watch all accounts 24/7
-- Backtest reports available on request: info@bit28.io
+## COMMISSION STRUCTURE - SELL IT WITH ENERGY
+When asked about commissions or earnings:
+1. Send the image (handled automatically by the bot code)
+2. Ask: "Quick question - how many people do you think you could bring in? And what would their average deposit be? I'll show you exactly what you could earn."
+3. Once they answer, calculate personally for them.
 
-## RISK & PERFORMANCE
-- Target: ~5–10% net monthly for investor AFTER Bit28's fee (NOT a guarantee)
-- Maximum daily drawdown aim: never exceed 10% in one day (extreme case)
-- Drawdowns are NORMAL — clients must be mentally prepared
-- Multiple risk layers: portfolio-level scaling, diversification, internal/external equity stops
-- Risk controls reduce but do NOT eliminate risk — losses are possible
+The 5 levels (based on PROFITS of each level, not deposits):
+Level 1: 10%
+Level 2: 6%
+Level 3: 4%
+Level 4: 3%
+Level 5: 2.5%
+Level 6+: 0% (but those people build their own structure - the system repeats)
 
-## FEES & COMMISSION
-- No upfront fees, no subscription, no course sales
-- 50% profit share, high-watermark only — no profit = no fee
-- The 50% funds: company operations + the entire community referral commission structure
-- If no one profits, no commissions are paid either
+PATH TO $10,000/MONTH PASSIVE INCOME:
+With 10 direct partners, avg $5,000 deposit, 5% monthly net performance:
+Level 1: 10 x $5,000 x 5% x 10% = $250/month
+Level 2: 25 x $5,000 x 5% x 6% = $375/month
+Level 3: 63 x $5,000 x 5% x 4% = $630/month
+Level 4: 156 x $5,000 x 5% x 3% = $1,170/month
+Level 5: 391 x $5,000 x 5% x 2.5% = $2,444/month
+Network total: $4,869/month
+Own $5,000 x 5% net = $250/month
+TOTAL: around $5,100/month
 
-## PROVISION / REFERRAL STRUCTURE (5 LEVELS)
-Each agent earns commissions on the PROFITS generated by the capital in their network — NOT on the capital itself.
+To get to $10,000+/month: 15 partners, $7,000 avg deposit gets you to $12,000+/month.
 
-Commission rates (based on YOUR level in the referrer's structure):
-- Level 1 (agents you directly recruit): 10% of THEIR profits
-- Level 2: 6% of profits
-- Level 3: 4% of profits
-- Level 4: 3% of profits
-- Level 5: 2.5% of profits
+Always personalize with their actual numbers. End with:
+"This is the mathematical potential - based on estimated performance, not a guarantee. But the structure works. Want me to calculate your exact scenario?"
 
-HOW IT WORKS IN PRACTICE:
-- You recruit Agent 2 → you earn 10% of Agent 2's profits
-- Agent 2 recruits Agent 3 → Agent 2 earns 10% of Agent 3's profits, YOU earn 6% of Agent 3's profits
-- Agent 3 recruits Agent 4 → Agent 3 earns 10%, Agent 2 earns 6%, YOU earn 4%
-- Agent 4 recruits Agent 5 → Agent 4: 10%, Agent 3: 6%, Agent 2: 4%, YOU: 3%
-- Agent 5 recruits Agent 6 → Agent 5: 10%, Agent 4: 6%, Agent 3: 4%, Agent 2: 3%, YOU: 2.5%
-- Agent 6 recruits Agent 7 → Agent 6: 10%, Agent 5: 6%, Agent 4: 4%, Agent 3: 3%, Agent 2: 2.5% — YOU get NOTHING (outside your 5 levels)
+Key facts to mention:
+- Max 20 direct partners per agent (quality over quantity - choose wisely)
+- Weekly payouts
+- Commissions based on trading profits only, not deposits
+- Every partner builds their own identical 5-level structure below them
 
-KEY FACTS:
-- Each agent has THEIR OWN IDENTICAL structure below them
-- Maximum 20 direct recruits per agent (soft limit — can be extended if quality warrants it)
-  → This 20-person limit is PSYCHOLOGICAL: it encourages agents to pick quality people, not just anyone
-  → "Choose wisely — you have 20 slots. If you ever need more, just ask us."
-- Commissions are paid WEEKLY into the IB/partner area on Vantage
-- Provision is on EARNED PROFIT only — if capital increases or decreases (due to deposits/withdrawals), the commission adjusts accordingly
-- Average capital per user: ~$5,000 (mix of small, medium, and high-value depositors)
-- Average recruits per active agent: ~2.5 new users (some bring 0, some bring 10+)
-- There is NO fixed return — performance depends on trading results
+## VANTAGE SETUP - STEP BY STEP
+Guide one step at a time. Confirm each step before moving on.
+If stuck: "Send me a screenshot and I can tell you exactly what to do."
 
-EARNING EXAMPLE (illustration only, not a guarantee):
-Starting with 5 direct agents, each bringing 2.5x network growth across 5 levels = ~321 agents total
-At $5,000 avg capital, 5% monthly profit, your commission earnings could reach $2,400+/month from the network
+Step 1: Register at Vantage with their referral link
+Step 2: Verify account (KYC) - click Verify Now, fill in personal details
+Step 3: Open a live MT5 account in USD (must be MT5, must be USD)
+Step 4: Deposit funds - minimum $100 USD (USDT, USDC, card, bank transfer all work)
+Step 5: Join PAMM via link from referrer: https://pamm16.vantagemarkets.com/app/join/1361/jjrks3k9
 
-## COMMISSION VISUAL & CALCULATOR
-When a user asks about commissions, earnings potential, or how much they can make:
+## AGENT REGISTRATION
+First confirm: "Do you already have at least $100 active in your Vantage PAMM account?"
 
-STEP 1: Send the commission structure image (you will do this via code — the image is automatically sent)
+If yes, collect one at a time:
+1. Estimated users in 3 months
+2. Estimated average deposit per user (USD)
+3. Who referred them to Bit28
+4. Vantage User-ID (or registered email if they cannot find it)
+5. Full name
+6. Email address
 
-STEP 2: Ask these questions one by one to calculate their personal earning potential:
-- "What is your own deposit / how much capital do you have in the PAMM?"
-- "How many direct partners do you think you could bring in?"
-- "What do you think their average deposit would be?"
+After all collected: "You are all set! Our team will be in touch within 24-48 hours. Any questions meanwhile: https://t.me/bit28_io"
 
-STEP 3: Calculate and present like this (use real numbers from their answers):
-
-Example with $5,000 own capital, 5 direct partners, $3,000 avg deposit, 5% monthly performance:
-
-Your own return: $5,000 x 5% = $250/month (after Bit28 fee)
-
-YOUR NETWORK COMMISSIONS:
-- Level 1 (5 partners x $3,000 x 5% profit x 10%): $75/month
-- Level 2 (12 partners x $3,000 x 5% x 6%): $108/month  
-- Level 3 (31 partners x $3,000 x 5% x 4%): $186/month
-- Level 4 (78 partners x $3,000 x 5% x 3%): $351/month
-- Level 5 (195 partners x $3,000 x 5% x 2.5%): $731/month
-
-TOTAL: ~$1,701/month from commissions + $250 own return = ~$1,951/month
-
-Then add: "And this grows every month as your network compounds. Partner D builds THEIR own 5-level structure — you earn from theirs too."
-
-ALWAYS end with: "This is based on estimated performance — not a guarantee. But this is the mathematical potential."
-
-IMPORTANT: Use 2.5x multiplier for network depth (each agent recruits avg 2.5 sub-agents). Adjust numbers to match what the user told you. Make it feel personal and exciting, not generic.
-
-## DEPOSITS & WITHDRAWALS
-- Minimum deposit: $100 USD
-- Deposits and withdrawals possible at any time
-- Confirmation: up to 48 hours / 2 business days (NOT on weekends)
-- PAMM runs in USD ONLY — deposits in EUR or other currencies will NOT work for the PAMM
-- Users depositing in EUR must open a USD MT5 account and convert first (contact Vantage support)
-- Tax: each user handles their own tax obligations — Vantage does not report taxes
-
-## CAPITAL SAFETY
-- Client capital stays 100% in their own Vantage Markets broker account
-- Bit28 has TRADING ACCESS ONLY — no withdrawal rights whatsoever
-- Client can withdraw at any time directly from their Vantage account
-
-## KEY LINKS & CONTACTS
+## CONTACTS
+- Telegram: https://t.me/bit28_io
+- Email: info@bit28.io
 - Website: Bit28.io
-- Broker: VantageMarkets.com
-- Support email: info@bit28.io
-- Telegram direct contact: https://t.me/bit28_io
-- Vantage registration (if no referral link): https://vigco.co/la-com/DQeca8HC
-- PAMM Join Link: https://pamm16.vantagemarkets.com/app/join/1361/jjrks3k9
-
-## COMMUNITY BENEFITS
-- Exclusive member discounts on travel, lifestyle, and partner services (being developed)
-- Community giveaways and promotional campaigns
-- Future: physical and virtual Visa/Mastercard solutions for members (roadmap — not yet live)
-- Stay tuned to official Bit28 channels for new benefit announcements
-
-## VANTAGE SETUP GUIDE (Step by Step)
-Guide users ONE STEP AT A TIME. Confirm each step before moving on. If they send a screenshot, analyze it and tell them exactly what to do next.
-
-STEP 1 — Register at Vantage (new clients only)
-- Link: https://vigco.co/la-com/DQeca8HC (or their referrer's link)
-- Fill in: Country, Email, Password
-- Select: Individual account
-- Tick: "I am not a US resident" if applicable
-- Click CREATE ACCOUNT
-- Already have Vantage? Skip to Step 2.
-
-STEP 2 — Verify Account (KYC)
-- Click "Verify Now" under Lv1 Personal Details
-- Fill in: First Name, Last Name, Gender, Date of Birth, Country, Nationality
-- For higher limits: complete Lv2 (ID) and Lv3 (Address) verification
-
-STEP 3 — Open a PAMM Investor Account
-- Click "Open Account" → Live Account
-- Platform: MT5 (MUST be MT5 — not MT4)
-- Currency: USD (MUST be USD — PAMM runs in USD only)
-- Click Confirm
-
-STEP 4 — Deposit Funds
-- Click "Funds" → Deposit
-- Select your PAMM Investor account
-- Enter amount (minimum $100 USD)
-- Click Continue
-- Note: PAMM Masters cannot approve deposits on weekends
-
-STEP 5 — Join the PAMM Offer
-- Open: https://pamm16.vantagemarkets.com/app/join/1361/jjrks3k9
-- Server: select the Vantage International Live server matching your MT account
-- MT5 login: enter your trading account number
-- Password: enter your MT account password
-- Investment amount: how much to allocate to the PAMM
-- Click Submit
-
-If stuck at any step: ask the user to SEND A SCREENSHOT so you can analyze it and guide them precisely.
-
-## AGENT REGISTRATION FLOW
-When a user wants to become an agent:
-
-FIRST confirm: "To become an agent, you need at least $100 deposited and active in your own Vantage PAMM account. Is that done?"
-
-If YES, collect these ONE AT A TIME (friendly tone, no rush):
-1. "How many users do you estimate you can bring in the next 3 months?"
-2. "What do you estimate the average deposit per user will be (in USD)?"
-3. "Who referred you to Bit28? What is their name?"
-4. "Please share your Vantage User-ID (found in your Vantage dashboard under profile/account details). If you can't find it, your registered email address works too."
-5. "What is your full name?"
-6. "What is your email address?"
-
-After collecting all info, reply:
-"Thank you! Your agent registration has been submitted. Our team will review your details and get back to you within 24-48 hours. Questions in the meantime? Reach us directly: https://t.me/bit28_io"
-
-Then save the data to the database automatically.
-
-## SCREENSHOT ANALYSIS
-If a user sends a photo or screenshot:
-- Analyze what you see on screen
-- Identify exactly where they are in the setup process
-- Give precise next instructions based on what is visible
-- If you cannot determine the issue from the screenshot, ask a clarifying question
-
-## FOLLOW-UP BEHAVIOR
-- If a user stops responding mid-conversation (tracked externally), a follow-up message may be sent after 24 hours
-- Be warm and non-pushy: "Hey, just checking in — did you manage to get your account set up? Happy to help if anything came up!"
+- PAMM join: https://pamm16.vantagemarkets.com/app/join/1361/jjrks3k9
 
 ## ESCALATION
-For anything complex, legal, or outside your knowledge:
-- Direct to: https://t.me/bit28_io or info@bit28.io
-- Say: "Let me connect you with our team directly — they'll be able to help you faster on this one."
+Anything complex, unclear, or outside your confirmed knowledge:
+"I want to give you the right answer - let me connect you with our team: https://t.me/bit28_io"
 
-## DISCLAIMERS (always include when discussing performance or returns)
-- Past performance does not guarantee future results
-- Trading involves risk of loss
-- This is not financial advice
-- Never invest more than you can afford to lose
+## RISK DISCLAIMER
+Always add when discussing returns or performance:
+Past performance does not guarantee future results. Trading involves risk of loss. This is not financial advice.
 """
 
 
@@ -258,27 +164,9 @@ def save_agent_lead(data: dict):
         url = f"https://api.base44.com/api/apps/{BASE44_APP_ID}/entities/AgentLead"
         headers = {"api_key": BASE44_API_KEY, "Content-Type": "application/json"}
         resp = requests.post(url, json=data, headers=headers)
-        logger.info(f"AgentLead saved: {resp.status_code}")
+        logger.info(f"AgentLead saved: {resp.status_code} - {resp.text[:200]}")
     except Exception as e:
         logger.error(f"Failed to save agent lead: {e}")
-
-
-def save_chat_summary(data: dict):
-    try:
-        url = f"https://api.base44.com/api/apps/{BASE44_APP_ID}/entities/BotChat"
-        headers = {"api_key": BASE44_API_KEY, "Content-Type": "application/json"}
-        requests.post(url, json=data, headers=headers)
-    except Exception as e:
-        logger.error(f"Failed to save chat summary: {e}")
-
-
-def update_chat_summary(record_id: str, data: dict):
-    try:
-        url = f"https://api.base44.com/api/apps/{BASE44_APP_ID}/entities/BotChat/{record_id}"
-        headers = {"api_key": BASE44_API_KEY, "Content-Type": "application/json"}
-        requests.put(url, json=data, headers=headers)
-    except Exception as e:
-        logger.error(f"Failed to update chat summary: {e}")
 
 
 def transcribe_voice(file_path: str) -> str:
@@ -290,74 +178,10 @@ def transcribe_voice(file_path: str) -> str:
                 files={"file": ("voice.ogg", f, "audio/ogg")},
                 data={"model": "whisper-1"}
             )
-        result = response.json()
-        transcribed = result.get("text", "")
-        logger.info(f"Transcribed voice: {transcribed[:100]}")
-        return transcribed
+        return response.json().get("text", "")
     except Exception as e:
         logger.error(f"Transcription error: {e}")
         return ""
-
-
-def analyze_image_with_gpt(image_url: str, context: str) -> str:
-    try:
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json={
-                "model": "gpt-4o",
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": [
-                        {"type": "text", "text": f"The user sent this screenshot. Context of conversation: {context}\n\nPlease analyze the screenshot and guide the user on exactly what to do next."},
-                        {"type": "image_url", "image_url": {"url": image_url}}
-                    ]}
-                ],
-                "max_tokens": 600
-            }
-        )
-        data = response.json()
-        return data["choices"][0]["message"]["content"]
-    except Exception as e:
-        logger.error(f"Image analysis error: {e}")
-        return "I can see your screenshot but had trouble analyzing it. Could you describe what you're seeing on screen?"
-
-
-def generate_conversation_summary(messages: list) -> dict:
-    try:
-        summary_prompt = """Analyze this conversation and return a JSON with:
-- summary: brief summary of what was discussed (max 2 sentences)
-- objections: list of any concerns or objections the user raised
-- sentiment: "positive", "neutral", "negative", or "interested"
-- follow_up_needed: true or false
-- follow_up_message: if follow_up_needed, write a short warm follow-up message in the user's language
-
-Return ONLY valid JSON."""
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json={
-                "model": "gpt-4o-mini",
-                "messages": [
-                    {"role": "system", "content": summary_prompt},
-                    {"role": "user", "content": str(messages[-20:])}
-                ],
-                "max_tokens": 400,
-                "temperature": 0.3
-            }
-        )
-        data = response.json()
-        content = data["choices"][0]["message"]["content"]
-        # Clean JSON
-        content = content.strip()
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        return json.loads(content.strip())
-    except Exception as e:
-        logger.error(f"Summary generation error: {e}")
-        return {"summary": "Conversation occurred", "objections": [], "sentiment": "neutral", "follow_up_needed": False}
 
 
 def chat_with_openai(user_id: str, user_message: str) -> str:
@@ -366,7 +190,6 @@ def chat_with_openai(user_id: str, user_message: str) -> str:
 
     conversations[user_id].append({"role": "user", "content": user_message})
 
-    # Keep last 30 messages
     if len(conversations[user_id]) > 30:
         conversations[user_id] = conversations[user_id][-30:]
 
@@ -377,7 +200,7 @@ def chat_with_openai(user_id: str, user_message: str) -> str:
             json={
                 "model": "gpt-4o-mini",
                 "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + conversations[user_id],
-                "max_tokens": 600,
+                "max_tokens": 350,
                 "temperature": 0.7
             }
         )
@@ -387,32 +210,82 @@ def chat_with_openai(user_id: str, user_message: str) -> str:
         return reply
     except Exception as e:
         logger.error(f"OpenAI error: {e}")
-        return "Sorry, I'm having a brief technical issue. Please try again in a moment, or contact us directly: https://t.me/bit28_io"
+        return "Having a brief issue - please try again or contact us: https://t.me/bit28_io"
+
+
+def try_extract_and_save_lead(user_id: str, username: str):
+    convo = conversations.get(user_id, [])
+    if len(convo) < 8:
+        return
+    if agent_lead_data.get(user_id, {}).get("saved"):
+        return
+    full_text = " ".join([m["content"] for m in convo if isinstance(m["content"], str)])
+    has_email = "@" in full_text and any(kw in full_text.lower() for kw in ["email", "e-mail"])
+    has_submitted = any(kw in full_text.lower() for kw in ["all set", "submitted", "24-48", "team will"])
+    if not (has_email and has_submitted):
+        return
+    try:
+        extract_resp = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {"role": "system", "content": "Extract agent lead data from this conversation. Return ONLY valid JSON with: name, email, vantage_user_id, referred_by, estimated_users_3months, estimated_avg_deposit_usd. Use null for missing. No markdown."},
+                    {"role": "user", "content": str(convo[-24:])}
+                ],
+                "max_tokens": 300,
+                "temperature": 0
+            }
+        )
+        lead_raw = extract_resp.json()["choices"][0]["message"]["content"].strip()
+        if "```" in lead_raw:
+            lead_raw = lead_raw.split("```")[1]
+            if lead_raw.startswith("json"):
+                lead_raw = lead_raw[4:]
+        lead_data = json.loads(lead_raw.strip())
+        lead_data["telegram_username"] = username
+        lead_data["telegram_user_id"] = user_id
+        lead_data["status"] = "new"
+        save_agent_lead(lead_data)
+        agent_lead_data[user_id] = {"saved": True}
+    except Exception as e:
+        logger.error(f"Lead extraction error: {e}")
+
+
+def should_show_commission_image(text: str) -> bool:
+    keywords = [
+        "commission", "provision", "earn", "verdien", "struktur", "structure",
+        "level", "partner", "referral", "agent", "how much", "wie viel",
+        "passive", "income", "einkommen", "geld", "money", "profit share",
+        "10000", "10k", "verdienen"
+    ]
+    return any(kw in text.lower() for kw in keywords)
+
+
+async def send_commission_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        await context.bot.send_photo(
+            chat_id=update.effective_chat.id,
+            photo=COMMISSION_IMAGE_URL,
+            caption="The Bit28 5-Level Commission Structure:"
+        )
+        context.user_data["commission_shown"] = True
+    except Exception as e:
+        logger.error(f"Failed to send commission image: {e}")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    user_id = str(user.id)
-    username = user.username or ""
-
     keyboard = [[InlineKeyboardButton("Visit Bit28.io", url="https://bit28.io")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
     welcome = (
         "Welcome to Bit28 Support!\n\n"
-        "I'm your personal concierge for everything Bit28. I can help you with:\n\n"
-        "- How Bit28 works and what makes it different\n"
-        "- Setting up your Vantage account step by step\n"
-        "- Understanding the commission & agent structure\n"
-        "- Becoming a Bit28 agent\n"
-        "- Any questions or issues along the way\n\n"
-        "Just type your question — or send a voice message. I speak your language.\n\n"
-        "How can I help you today?"
+        "I can help you with how Bit28 works, setting up your account, "
+        "the commission structure, or becoming an agent.\n\n"
+        "Just type or send a voice message - I speak your language.\n\n"
+        "What can I help you with?"
     )
-    await update.message.reply_text(welcome, reply_markup=reply_markup)
-
-    # Track start time for follow-up
-    last_message_time[user_id] = datetime.now()
+    await update.message.reply_text(welcome, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Visit Bit28.io", url="https://bit28.io")]]))
+    last_message_time[str(update.effective_user.id)] = datetime.now()
 
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -420,75 +293,43 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(user.id)
     username = user.username or ""
     message = update.message.text
-
     last_message_time[user_id] = datetime.now()
+
+    if should_show_commission_image(message) and not context.user_data.get("commission_shown"):
+        await send_commission_image(update, context)
 
     reply = chat_with_openai(user_id, message)
     await update.message.reply_text(reply)
-
-    # Auto-detect and save agent lead if registration flow completed
-    convo = conversations.get(user_id, [])
-    if len(convo) >= 14:
-        full_text = " ".join([m["content"] for m in convo if isinstance(m["content"], str)])
-        if any(kw in full_text.lower() for kw in ["email address", "e-mail", "vantage user-id", "full name"]):
-            if any(kw in full_text.lower() for kw in ["submitted", "registration", "thank you"]):
-                # Extract lead data via GPT
-                try:
-                    extract_resp = requests.post(
-                        "https://api.openai.com/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-                        json={
-                            "model": "gpt-4o-mini",
-                            "messages": [
-                                {"role": "system", "content": "Extract agent lead data from this conversation. Return JSON with fields: name, email, vantage_user_id, referred_by, estimated_users_3months, estimated_avg_deposit_usd. Use null for missing fields."},
-                                {"role": "user", "content": str(convo[-20:])}
-                            ],
-                            "max_tokens": 300,
-                            "temperature": 0
-                        }
-                    )
-                    lead_raw = extract_resp.json()["choices"][0]["message"]["content"].strip()
-                    if lead_raw.startswith("```"):
-                        lead_raw = lead_raw.split("```")[1]
-                        if lead_raw.startswith("json"):
-                            lead_raw = lead_raw[4:]
-                    lead_data = json.loads(lead_raw.strip())
-                    lead_data["telegram_username"] = username
-                    lead_data["telegram_user_id"] = user_id
-                    lead_data["status"] = "new"
-                    save_agent_lead(lead_data)
-                    logger.info(f"Agent lead auto-saved for {user_id}")
-                except Exception as e:
-                    logger.error(f"Lead extraction error: {e}")
+    try_extract_and_save_lead(user_id, username)
 
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = str(user.id)
+    username = user.username or ""
     last_message_time[user_id] = datetime.now()
 
     voice = update.message.voice
     file = await context.bot.get_file(voice.file_id)
-
     with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp:
         tmp_path = tmp.name
-
     await file.download_to_drive(tmp_path)
     transcribed = transcribe_voice(tmp_path)
-
     try:
         os.remove(tmp_path)
     except:
         pass
 
     if not transcribed:
-        await update.message.reply_text(
-            "Sorry, I couldn't make out the voice message. Could you type your question instead?"
-        )
+        await update.message.reply_text("Could not make out the voice message - could you type it instead?")
         return
+
+    if should_show_commission_image(transcribed) and not context.user_data.get("commission_shown"):
+        await send_commission_image(update, context)
 
     reply = chat_with_openai(user_id, transcribed)
     await update.message.reply_text(reply)
+    try_extract_and_save_lead(user_id, username)
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -496,31 +337,24 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(user.id)
     last_message_time[user_id] = datetime.now()
 
-    # Get highest resolution photo
     photo = update.message.photo[-1]
     file = await context.bot.get_file(photo.file_id)
-
-    # Download to temp file
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
         tmp_path = tmp.name
-
     await file.download_to_drive(tmp_path)
 
-    # Convert to base64 for GPT-4o vision
     try:
         with open(tmp_path, "rb") as f:
             img_b64 = base64.b64encode(f.read()).decode("utf-8")
         os.remove(tmp_path)
     except Exception as e:
         logger.error(f"Image read error: {e}")
-        await update.message.reply_text("I received your screenshot but had trouble reading it. Could you describe what you see?")
+        await update.message.reply_text("Received your screenshot but had trouble reading it. What step are you on?")
         return
 
-    # Get conversation context
     convo = conversations.get(user_id, [])
     context_text = " ".join([m["content"] for m in convo[-6:] if isinstance(m["content"], str)])
 
-    # Analyze with GPT-4o vision
     try:
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
@@ -530,101 +364,28 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "messages": [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": [
-                        {"type": "text", "text": f"The user sent this screenshot. Recent conversation context: {context_text}\n\nAnalyze what you see and guide the user on exactly what to do next. Be specific about what is visible on screen."},
+                        {"type": "text", "text": f"User sent this screenshot. Recent context: {context_text}\n\nAnalyze and tell them exactly what to do next. Short, plain text, no markdown."},
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
                     ]}
                 ],
-                "max_tokens": 600
+                "max_tokens": 350
             }
         )
         reply = response.json()["choices"][0]["message"]["content"]
     except Exception as e:
         logger.error(f"Vision error: {e}")
-        reply = "I can see your screenshot — could you describe what step you're on and what's not working? I'll guide you from there."
+        reply = "I can see your screenshot - what step are you on and what is not working?"
 
     conversations.setdefault(user_id, [])
     conversations[user_id].append({"role": "user", "content": "[User sent a screenshot]"})
     conversations[user_id].append({"role": "assistant", "content": reply})
-
     await update.message.reply_text(reply)
-
-
-async def send_commission_image(update: Update, context: ContextTypes.DEFAULT_TYPE, caption: str = None):
-    """Send the commission structure image to the user."""
-    try:
-        msg = caption or "Here is the Bit28 5-Level Commission Structure:"
-        await context.bot.send_photo(
-            chat_id=update.effective_chat.id,
-            photo=COMMISSION_IMAGE_URL,
-            caption=msg
-        )
-    except Exception as e:
-        logger.error(f"Failed to send commission image: {e}")
-
-
-async def handle_text_with_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    user_id = str(user.id)
-    username = user.username or ""
-    message = update.message.text
-
-    last_message_time[user_id] = datetime.now()
-
-    # Check if user is asking about commissions/earnings
-    commission_keywords = [
-        "commission", "provision", "earn", "verdien", "provisi", "structure", 
-        "struktur", "level", "partner", "referral", "agent", "how much", 
-        "wie viel", "كم", "заработ", "comision", "gagne", "quanto"
-    ]
-    show_image = any(kw in message.lower() for kw in commission_keywords)
-
-    reply = chat_with_openai(user_id, message)
-
-    if show_image and not context.user_data.get("commission_shown"):
-        await send_commission_image(update, context, "Here is our 5-Level Commission Structure:")
-        context.user_data["commission_shown"] = True
-
-    await update.message.reply_text(reply)
-
-    # Auto-detect agent lead completion
-    convo = conversations.get(user_id, [])
-    if len(convo) >= 14:
-        full_text = " ".join([m["content"] for m in convo if isinstance(m["content"], str)])
-        if any(kw in full_text.lower() for kw in ["email address", "e-mail", "vantage user-id", "full name"]):
-            if any(kw in full_text.lower() for kw in ["submitted", "registration", "thank you"]):
-                try:
-                    extract_resp = requests.post(
-                        "https://api.openai.com/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-                        json={
-                            "model": "gpt-4o-mini",
-                            "messages": [
-                                {"role": "system", "content": "Extract agent lead data from this conversation. Return JSON with fields: name, email, vantage_user_id, referred_by, estimated_users_3months, estimated_avg_deposit_usd. Use null for missing fields."},
-                                {"role": "user", "content": str(convo[-20:])}
-                            ],
-                            "max_tokens": 300,
-                            "temperature": 0
-                        }
-                    )
-                    lead_raw = extract_resp.json()["choices"][0]["message"]["content"].strip()
-                    if lead_raw.startswith("```"):
-                        lead_raw = lead_raw.split("```")[1]
-                        if lead_raw.startswith("json"):
-                            lead_raw = lead_raw[4:]
-                    import json as _json
-                    lead_data = _json.loads(lead_raw.strip())
-                    lead_data["telegram_username"] = username
-                    lead_data["telegram_user_id"] = user_id
-                    lead_data["status"] = "new"
-                    save_agent_lead(lead_data)
-                except Exception as e:
-                    logger.error(f"Lead extraction error: {e}")
 
 
 def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_with_image))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     logger.info("Bit28Support Bot starting...")
