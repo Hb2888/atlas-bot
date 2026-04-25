@@ -12,7 +12,7 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 BASE44_API_KEY = os.environ.get("BASE44_API_KEY")
 BASE44_APP_ID = "69e600cd255745ec10a0fa67"
 
-SYSTEM_PROMPT = """You are Bit28Support — the official AI assistant of Bit28, an invitation-only investment club. Detect language automatically and respond in that language. Be professional, warm, trustworthy. Never expose internal operations. Always include risk disclaimers when discussing returns. For complex issues direct to info@bit28.io. Main site: Bit28.io. Broker: VantageMarkets.com. Registration: https://vigco.co/la-com/DQeca8HC. PAMM join: https://pamm16.vantagemarkets.com/app/join/1361/jjrks3k9. Performance fee: 50% profit share, high-watermark. Min deposit $100. Target returns 5-10% monthly after fees — NOT a guarantee. Losses possible."""
+SYSTEM_PROMPT = """You are Bit28Support -- the official AI assistant of Bit28, an invitation-only investment club. Detect the user language and respond in it. Be professional, warm, and trustworthy. Never guarantee returns. Always add risk disclaimers when discussing performance. Direct complex issues to info@bit28.io. Guide users step by step through Vantage setup. Registration link: https://vigco.co/la-com/DQeca8HC. PAMM join link: https://pamm16.vantagemarkets.com/app/join/1361/jjrks3k9. Minimum deposit $100. Performance fee: 50% profit share, high-watermark. No profit = no fee. Monthly target 5-10% net (not guaranteed). For agent registration collect: name, email, referred by, estimated users, estimated capital."""
 
 conversations = {}
 
@@ -26,17 +26,19 @@ def chat_with_openai(user_id, user_message):
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json={"model": "gpt-4o-mini", "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + conversations[user_id], "max_tokens": 1000}
+            json={"model": "gpt-4o-mini", "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + conversations[user_id], "max_tokens": 1000, "temperature": 0.7}
         )
-        msg = response.json()["choices"][0]["message"]["content"]
+        result = response.json()
+        msg = result["choices"][0]["message"]["content"]
         conversations[user_id].append({"role": "assistant", "content": msg})
         return msg
     except Exception as e:
+        logger.error(f"OpenAI error: {e}")
         return "Technical issue. Please contact info@bit28.io"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conversations[update.effective_user.id] = []
-        await update.message.reply_text("Welcome to Bit28!\n\nHow can I help you today?")
+    await update.message.reply_text("Welcome to Bit28!\n\nHow can I help you today?")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
@@ -47,6 +49,7 @@ def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    logger.info("Bot starting...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
