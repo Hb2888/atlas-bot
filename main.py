@@ -196,14 +196,13 @@ Question 4: "Who introduced you to Bit28?"
 
 Question 5: "What is your full name?"
 
-Question 6: "And your email address?"
-
-After all collected:
+After all 5 questions are answered:
 "Perfect - you are all set. Our team will be in touch within 24-48 hours to confirm everything.
 
 In the meantime, the person who invited you is always your first point of contact. You can also reach us anytime at https://t.me/bit28_io or info@bit28.io"
 
-IMPORTANT: Never ask for email address twice. Never ask two questions in one message. Never start by asking "do you have $100?" - give the full overview first, then invite them to start.
+NOTE ON EMAIL: Do NOT ask for email if you already have the Vantage User-ID. The User-ID is enough to identify the person. Only ask for email if the person could not provide their User-ID and gave their email as fallback instead.
+IMPORTANT: Never ask two questions in one message. Never start by asking "do you have $100?" - give the full overview first, then invite them to start.
 
 ---
 
@@ -287,15 +286,17 @@ def try_extract_and_save_lead(user_id: str, username: str):
 
     full_text = " ".join([m["content"] for m in convo if isinstance(m["content"], str)])
 
-    # Check if email exists anywhere in the conversation
     import re
     email_match = re.search(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}', full_text)
-    if not email_match:
+    vantage_id_likely = any(keyword in full_text.lower() for keyword in ["vantage", "user id", "user-id", "userid", "id:"])
+
+    # Save when we have meaningful data - either email or vantage ID signal, and enough messages
+    if not email_match and not vantage_id_likely and len(convo) < 10:
         return
 
     already_saved = agent_lead_data.get(user_id, {}).get("saved")
 
-    # Always try to update/save when we have an email (even partial data)
+    # Always try to update/save when we have enough data
     try:
         extract_resp = requests.post(
             "https://api.openai.com/v1/chat/completions",
@@ -317,7 +318,7 @@ def try_extract_and_save_lead(user_id: str, username: str):
             if lead_raw.startswith("json"):
                 lead_raw = lead_raw[4:]
         lead_data = json.loads(lead_raw.strip())
-        if not lead_data.get("email"):
+        if not lead_data.get("email") and email_match:
             lead_data["email"] = email_match.group(0)
         lead_data["telegram_username"] = username
         lead_data["telegram_user_id"] = user_id
