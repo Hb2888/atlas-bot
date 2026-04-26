@@ -20,6 +20,9 @@ COMMISSION_IMAGE_URL = "https://base44.app/api/apps/69e5e7aaf26f910c2292c93d/fil
 conversations = {}
 agent_lead_data = {}
 registration_state = {}
+# Structured lead collection: stores confirmed answers per user
+lead_collection = {}
+LEAD_STEPS = ["vantage_user_id", "estimated_users_3months", "estimated_avg_deposit_usd", "referred_by", "name"]
 
 SYSTEM_PROMPT = """You are Bit28Support, the official AI assistant of Bit28 - a private investment club.
 
@@ -280,36 +283,46 @@ def chat_with_openai(user_id: str, user_message: str) -> str:
 
 
 def try_extract_and_save_lead(user_id: str, username: str):
+    """Extract lead data from conversation using GPT and save to dashboard."""
     convo = conversations.get(user_id, [])
-    if len(convo) < 4:
-        return
-
-    full_text = " ".join([m["content"] for m in convo if isinstance(m["content"], str)])
-
-    import re
-    email_match = re.search(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}', full_text)
-    vantage_id_likely = any(keyword in full_text.lower() for keyword in ["vantage", "user id", "user-id", "userid", "id:"])
-
-    # Save when we have meaningful data - either email or vantage ID signal, and enough messages
-    if not email_match and not vantage_id_likely and len(convo) < 10:
+    if len(convo) < 6:
         return
 
     already_saved = agent_lead_data.get(user_id, {}).get("saved")
+    # Only save once per session
+    if already_saved:
+        return
 
-    # Always try to update/save when we have enough data
+    # Check if registration flow seems completed (bot asked for name = last step)
+    full_text = " ".join([m["content"] for m in convo if isinstance(m["content"], str)])
+    registration_keywords = ["vantage user-id", "vantage user id", "how many partners", "wie viele partner",
+                             "who introduced", "wer hat dich", "your full name", "dein name", "dein vollständiger name"]
+    if not any(kw in full_text.lower() for kw in registration_keywords):
+        return
+
+    import re
     try:
         extract_resp = requests.post(
             "https://api.openai.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json={
-                "model": "gpt-4o-mini",
+            json={{
+                "model": "gpt-4o",
                 "messages": [
-                    {"role": "system", "content": "Extract agent lead data from this conversation. Return ONLY valid JSON with exactly these fields: name, email, vantage_user_id, referred_by, estimated_users_3months, estimated_avg_deposit_usd. Use null for any missing fields. No markdown, no explanation, just JSON."},
-                    {"role": "user", "content": str(convo[-30:])}
+                    {{"role": "system", "content": """You are a data extractor. From the conversation below, extract agent registration data.
+Return ONLY a valid JSON object with these exact fields:
+- name: full name of the user (string or null)
+- email: email address if mentioned (string or null)  
+- vantage_user_id: their Vantage User-ID or registered email used as fallback (string or null)
+- referred_by: who invited/referred them to Bit28 (string or null)
+- estimated_users_3months: how many partners they think they can bring in (number or null)
+- estimated_avg_deposit_usd: estimated average deposit in USD per partner (number or null)
+
+Extract only what the USER explicitly stated. No markdown, no explanation, just the JSON object."""}},
+                    {{"role": "user", "content": str(convo[-40:])}}
                 ],
-                "max_tokens": 300,
+                "max_tokens": 400,
                 "temperature": 0
-            }
+            }}
         )
         lead_raw = extract_resp.json()["choices"][0]["message"]["content"].strip()
         if "```" in lead_raw:
@@ -318,24 +331,30 @@ def try_extract_and_save_lead(user_id: str, username: str):
             if lead_raw.startswith("json"):
                 lead_raw = lead_raw[4:]
         lead_data = json.loads(lead_raw.strip())
-        if not lead_data.get("email") and email_match:
-            lead_data["email"] = email_match.group(0)
+
+        # Always add telegram info
         lead_data["telegram_username"] = username
         lead_data["telegram_user_id"] = user_id
         lead_data["status"] = "new"
 
-        if already_saved:
-            # Update existing record
-            existing_id = agent_lead_data[user_id].get("record_id")
-            if existing_id:
-                # Just save as new record if update fails
-                save_agent_lead(lead_data)
-                logger.info(f"Lead updated for {user_id}")
-        else:
+        # Convert numeric fields safely
+        for field in ["estimated_users_3months", "estimated_avg_deposit_usd"]:
+            if lead_data.get(field):
+                try:
+                    lead_data[field] = float(str(lead_data[field]).replace(",", ".").replace("$", "").strip())
+                except:
+                    lead_data[field] = None
+
+        # Only save if we have at least vantage_user_id or name
+        if lead_data.get("vantage_user_id") or lead_data.get("name"):
             success = save_agent_lead(lead_data)
             if success:
-                agent_lead_data[user_id] = {"saved": True, "record_id": None}
-                logger.info(f"Lead saved for {user_id}")
+                agent_lead_data[user_id] = {{"saved": True}}
+                logger.info(f"Lead saved for {user_id}: {lead_data}")
+            else:
+                logger.error(f"Failed to save lead for {user_id}")
+        else:
+            logger.info(f"Not enough data to save lead for {user_id}")
     except Exception as e:
         logger.error(f"Lead extraction error: {e}")
 
