@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 BASE44_API_KEY = os.environ.get("BASE44_API_KEY")
-BASE44_APP_ID = "69e600cd255745ec10a0fa67"
+BASE44_APP_ID = "69e5e7aaf26f910c2292c93d"
 COMMISSION_IMAGE_URL = "https://base44.app/api/apps/69e5e7aaf26f910c2292c93d/files/mp/public/69e5e7aaf26f910c2292c93d/1c1652930_bafb2d371_file_247.jpg"
 
 conversations = {}
@@ -164,13 +164,13 @@ Past performance does not guarantee future results. Trading involves risk of los
 """
 
 
+WEBHOOK_URL = "https://atlas-2292c93d.base44.app/api/functions/bit28Dashboard"
+
 def save_agent_lead(data: dict):
     try:
-        url = f"https://api.base44.com/api/apps/{BASE44_APP_ID}/entities/AgentLead"
-        headers = {"api_key": BASE44_API_KEY, "Content-Type": "application/json"}
-        resp = requests.post(url, json=data, headers=headers)
-        logger.info(f"AgentLead saved: {resp.status_code} - {resp.text[:300]}")
-        return resp.status_code == 200 or resp.status_code == 201
+        resp = requests.post(WEBHOOK_URL, json=data, headers={"Content-Type": "application/json"}, timeout=10)
+        logger.info(f"AgentLead saved: {resp.status_code} - {resp.text[:200]}")
+        return resp.status_code in [200, 201]
     except Exception as e:
         logger.error(f"Failed to save agent lead: {e}")
         return False
@@ -267,9 +267,8 @@ def try_extract_and_save_lead(user_id: str, username: str):
             # Update existing record
             existing_id = agent_lead_data[user_id].get("record_id")
             if existing_id:
-                url = f"https://api.base44.com/api/apps/{BASE44_APP_ID}/entities/AgentLead/{existing_id}"
-                headers = {"api_key": BASE44_API_KEY, "Content-Type": "application/json"}
-                requests.put(url, json=lead_data, headers=headers)
+                # Just save as new record if update fails
+                save_agent_lead(lead_data)
                 logger.info(f"Lead updated for {user_id}")
         else:
             success = save_agent_lead(lead_data)
