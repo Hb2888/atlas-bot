@@ -297,27 +297,19 @@ def try_extract_and_save_lead(user_id: str, username: str):
 
     import re
     try:
+        extract_payload = {
+            "model": "gpt-4o",
+            "messages": [
+                {"role": "system", "content": "You are a data extractor. From the conversation below, extract agent registration data. Return ONLY a valid JSON object with these exact fields: name (string or null), email (string or null), vantage_user_id (string or null), referred_by (string or null), estimated_users_3months (number or null), estimated_avg_deposit_usd (number or null). Extract only what the USER explicitly stated. No markdown, no explanation, just the JSON object."},
+                {"role": "user", "content": str(convo[-40:])}
+            ],
+            "max_tokens": 400,
+            "temperature": 0
+        }
         extract_resp = requests.post(
             "https://api.openai.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json={{
-                "model": "gpt-4o",
-                "messages": [
-                    {{"role": "system", "content": """You are a data extractor. From the conversation below, extract agent registration data.
-Return ONLY a valid JSON object with these exact fields:
-- name: full name of the user (string or null)
-- email: email address if mentioned (string or null)  
-- vantage_user_id: their Vantage User-ID or registered email used as fallback (string or null)
-- referred_by: who invited/referred them to Bit28 (string or null)
-- estimated_users_3months: how many partners they think they can bring in (number or null)
-- estimated_avg_deposit_usd: estimated average deposit in USD per partner (number or null)
-
-Extract only what the USER explicitly stated. No markdown, no explanation, just the JSON object."""}},
-                    {{"role": "user", "content": str(convo[-40:])}}
-                ],
-                "max_tokens": 400,
-                "temperature": 0
-            }}
+            json=extract_payload
         )
         lead_raw = extract_resp.json()["choices"][0]["message"]["content"].strip()
         if "```" in lead_raw:
@@ -352,7 +344,7 @@ Extract only what the USER explicitly stated. No markdown, no explanation, just 
         if has_data:
             success = save_agent_lead(lead_data)
             if success:
-                agent_lead_data[user_id] = {{"saved": True}}
+                agent_lead_data[user_id] = {"saved": True}
                 logger.info(f"Lead saved for {user_id}: {lead_data}")
             else:
                 logger.error(f"Failed to save lead for {user_id}")
