@@ -285,7 +285,7 @@ def chat_with_openai(user_id: str, user_message: str) -> str:
 def try_extract_and_save_lead(user_id: str, username: str):
     """Extract lead data from conversation using GPT and save to dashboard."""
     convo = conversations.get(user_id, [])
-    if len(convo) < 6:
+    if len(convo) < 4:
         return
 
     already_saved = agent_lead_data.get(user_id, {}).get("saved")
@@ -293,12 +293,7 @@ def try_extract_and_save_lead(user_id: str, username: str):
     if already_saved:
         return
 
-    # Check if registration flow seems completed (bot asked for name = last step)
     full_text = " ".join([m["content"] for m in convo if isinstance(m["content"], str)])
-    registration_keywords = ["vantage user-id", "vantage user id", "how many partners", "wie viele partner",
-                             "who introduced", "wer hat dich", "your full name", "dein name", "dein vollständiger name"]
-    if not any(kw in full_text.lower() for kw in registration_keywords):
-        return
 
     import re
     try:
@@ -345,8 +340,16 @@ Extract only what the USER explicitly stated. No markdown, no explanation, just 
                 except:
                     lead_data[field] = None
 
-        # Only save if we have at least vantage_user_id or name
-        if lead_data.get("vantage_user_id") or lead_data.get("name"):
+        # Save if we have at least telegram_user_id (always present) + any one field
+        has_data = any([
+            lead_data.get("vantage_user_id"),
+            lead_data.get("name"),
+            lead_data.get("email"),
+            lead_data.get("referred_by"),
+            lead_data.get("estimated_users_3months"),
+            lead_data.get("estimated_avg_deposit_usd"),
+        ])
+        if has_data:
             success = save_agent_lead(lead_data)
             if success:
                 agent_lead_data[user_id] = {{"saved": True}}
@@ -354,7 +357,7 @@ Extract only what the USER explicitly stated. No markdown, no explanation, just 
             else:
                 logger.error(f"Failed to save lead for {user_id}")
         else:
-            logger.info(f"Not enough data to save lead for {user_id}")
+            logger.info(f"Not enough data yet for {user_id}")
     except Exception as e:
         logger.error(f"Lead extraction error: {e}")
 
