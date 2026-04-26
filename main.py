@@ -14,8 +14,6 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 COMMISSION_IMAGE_URL = "https://base44.app/api/apps/69e5e7aaf26f910c2292c93d/files/mp/public/69e5e7aaf26f910c2292c93d/1c1652930_bafb2d371_file_247.jpg"
-BASE_API = "https://base44.app/api/apps/69e5e7aaf26f910c2292c93d/entities/AgentLead"
-SVC_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhNWRlOGQ1YS02NjdjLTQ0YjItOWFlZi00MWQ0ODNiMjgzYzYiLCJjbGllbnRfaWQiOiJhNWRlOGQ1YS02NjdjLTQ0YjItOWFlZi00MWQ0ODNiMjgzYzYiLCJhcHBfaWQiOiI2OWU1ZTdhYWYyNmY5MTBjMjI5MmM5M2QiLCJhdWQiOiJiYXNlNDRfYXBpIiwic2NvcGUiOiJhcHAuYWNjZXNzIiwiZXhwIjoxNzc3MTg5OTUzLCJpYXQiOjE3NzcxODYzNTN9.LPrr4246KyM7nhq_w0k9mmtH_bqMsx3jrm5OvArmd2g"
 
 conversations = {}
 agent_lead_data = {}
@@ -205,18 +203,18 @@ Trading involves risk of capital loss. Past performance does not guarantee futur
 
 
 def save_lead(data: dict, existing_id: str = None):
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {SVC_TOKEN}"
-    }
+    """Save or update a lead via the public bit28Dashboard function. No token needed."""
+    DASHBOARD_URL = "https://atlas-2292c93d.base44.app/api/functions/bit28Dashboard"
     try:
+        payload = dict(data)
         if existing_id:
-            resp = requests.put(f"{BASE_API}/{existing_id}", json=data, headers=headers, timeout=10)
-        else:
-            resp = requests.post(BASE_API, json=data, headers=headers, timeout=10)
+            payload["lead_id"] = existing_id
+        resp = requests.post(DASHBOARD_URL, json=payload, headers={"Content-Type": "application/json"}, timeout=15)
         logger.info(f"save_lead {resp.status_code}: {resp.text[:200]}")
         if resp.status_code in [200, 201]:
-            return resp.json().get("id")
+            result = resp.json()
+            return result.get("id") or existing_id or True
+        logger.error(f"save_lead failed: {resp.status_code} {resp.text[:200]}")
         return None
     except Exception as e:
         logger.error(f"save_lead error: {e}")
@@ -261,7 +259,7 @@ def extract_and_save_lead(user_id: str, username: str):
             timeout=15
         )
         raw = resp.json()["choices"][0]["message"]["content"].strip()
-        raw = raw.replace("", "").strip()
+        raw = raw.replace("```json", "").replace("```", "").strip()
         lead = json.loads(raw)
 
         lead["telegram_username"] = username
@@ -481,3 +479,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+             
+            
+
+   
