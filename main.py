@@ -222,16 +222,20 @@ def chat_with_openai(user_id: str, user_message: str) -> str:
 
 def try_extract_and_save_lead(user_id: str, username: str):
     convo = conversations.get(user_id, [])
-    if len(convo) < 10:
+    if len(convo) < 4:
         return
-    if agent_lead_data.get(user_id, {}).get("saved"):
-        return
+
     full_text = " ".join([m["content"] for m in convo if isinstance(m["content"], str)])
-    has_email = "@" in full_text
-    has_name = any(kw in full_text.lower() for kw in ["my name", "ich bin", "ich heisse", "je m'appelle", "full name", "name is"])
-    has_completed = any(kw in full_text.lower() for kw in ["all set", "24-48", "team will", "alles erledigt", "in touch"])
-    if not (has_email and (has_name or has_completed)):
+
+    # Check if email exists anywhere in the conversation
+    import re
+    email_match = re.search(r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}', full_text)
+    if not email_match:
         return
+
+    already_saved = agent_lead_data.get(user_id, {}).get("saved")
+
+    # Always try to update/save when we have an email (even partial data)
     try:
         extract_resp = requests.post(
             "https://api.openai.com/v1/chat/completions",
@@ -254,14 +258,24 @@ def try_extract_and_save_lead(user_id: str, username: str):
                 lead_raw = lead_raw[4:]
         lead_data = json.loads(lead_raw.strip())
         if not lead_data.get("email"):
-            return
+            lead_data["email"] = email_match.group(0)
         lead_data["telegram_username"] = username
         lead_data["telegram_user_id"] = user_id
         lead_data["status"] = "new"
-        success = save_agent_lead(lead_data)
-        if success:
-            agent_lead_data[user_id] = {"saved": True}
-            logger.info(f"Lead successfully saved for {user_id}")
+
+        if already_saved:
+            # Update existing record
+            existing_id = agent_lead_data[user_id].get("record_id")
+            if existing_id:
+                url = f"https://api.base44.com/api/apps/{BASE44_APP_ID}/entities/AgentLead/{existing_id}"
+                headers = {"api_key": BASE44_API_KEY, "Content-Type": "application/json"}
+                requests.put(url, json=lead_data, headers=headers)
+                logger.info(f"Lead updated for {user_id}")
+        else:
+            success = save_agent_lead(lead_data)
+            if success:
+                agent_lead_data[user_id] = {"saved": True, "record_id": None}
+                logger.info(f"Lead saved for {user_id}")
     except Exception as e:
         logger.error(f"Lead extraction error: {e}")
 
