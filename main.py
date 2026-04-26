@@ -228,11 +228,19 @@ Trading involves risk of capital loss. Past performance does not guarantee futur
 
 WEBHOOK_URL = "https://atlas-2292c93d.base44.app/api/functions/bit28Dashboard"
 
-def save_agent_lead(data: dict):
+def save_agent_lead(data: dict, existing_id: str = None):
     try:
-        resp = requests.post(WEBHOOK_URL, json=data, headers={"Content-Type": "application/json"}, timeout=10)
+        if existing_id:
+            # Update existing lead with new data
+            update_url = WEBHOOK_URL.replace("/api/functions/bit28Dashboard", f"/api/apps/69e5e7aaf26f910c2292c93d/entities/AgentLead/{existing_id}")
+            resp = requests.put(update_url, json=data, headers={"Content-Type": "application/json"}, timeout=10)
+        else:
+            resp = requests.post(WEBHOOK_URL, json=data, headers={"Content-Type": "application/json"}, timeout=10)
         logger.info(f"AgentLead saved: {resp.status_code} - {resp.text[:200]}")
-        return resp.status_code in [200, 201]
+        if resp.status_code in [200, 201]:
+            result = resp.json()
+            return result.get("id") or True
+        return False
     except Exception as e:
         logger.error(f"Failed to save agent lead: {e}")
         return False
@@ -288,9 +296,10 @@ def try_extract_and_save_lead(user_id: str, username: str):
     if len(convo) < 4:
         return
 
-    already_saved = agent_lead_data.get(user_id, {}).get("saved")
-    # Only save once per session
-    if already_saved:
+    # Check if we already have a fully complete lead saved
+    existing = agent_lead_data.get(user_id, {})
+    already_complete = existing.get("complete")
+    if already_complete:
         return
 
     full_text = " ".join([m["content"] for m in convo if isinstance(m["content"], str)])
@@ -342,10 +351,19 @@ def try_extract_and_save_lead(user_id: str, username: str):
             lead_data.get("estimated_avg_deposit_usd"),
         ])
         if has_data:
-            success = save_agent_lead(lead_data)
-            if success:
-                agent_lead_data[user_id] = {"saved": True}
-                logger.info(f"Lead saved for {user_id}: {lead_data}")
+            existing_id = agent_lead_data.get(user_id, {}).get("id")
+            result = save_agent_lead(lead_data, existing_id=existing_id)
+            if result:
+                all_fields = all([
+                    lead_data.get("vantage_user_id") or lead_data.get("email"),
+                    lead_data.get("name"),
+                    lead_data.get("referred_by"),
+                    lead_data.get("estimated_users_3months"),
+                    lead_data.get("estimated_avg_deposit_usd"),
+                ])
+                saved_id = result if isinstance(result, str) else existing_id
+                agent_lead_data[user_id] = {"saved": True, "complete": all_fields, "id": saved_id}
+                logger.info(f"Lead saved for {user_id} id={saved_id} (complete={all_fields}): {lead_data}")
             else:
                 logger.error(f"Failed to save lead for {user_id}")
         else:
