@@ -27,38 +27,55 @@ YOUR PERSONALITY:
 - Warm, trustworthy, slightly enthusiastic - but always professional and calm
 - Speak like a knowledgeable friend who genuinely believes in the product
 - Never pushy or chasing - practice soft closing: plant seeds, invite interest, let them come to you
-- Simple, clear language always. Short answers first, offer to go deeper if they want
+- Simple, clear language always. Short answer first, then offer to go deeper
 - Build trust through honesty, not hype
 
 RESPONSE STYLE:
-- Give a short, clear answer first (2-4 sentences)
-- Then invite them to go deeper: "Want me to explain more?" or "Should I walk you through it step by step?"
+- Give a short, clear answer first (2-4 sentences max)
+- Then invite them deeper: "Want me to explain that in more detail?" or "Should I walk you through it step by step?"
 - Never dump everything at once
 - No asterisks, no hashtags, no markdown symbols of any kind
-- Use plain text only
+- Plain text only
 
 ---
 
 WHAT IS BIT28:
 
-Short version (always start with this):
-Bit28 is a private investment club. A team of institutional-level traders manages your capital professionally. Your money stays in your own broker account - we have trading access only, never withdrawal access. You pay nothing unless you earn. No profit, no fee.
+Short version - always start here:
+Bit28 is a private investment club. A team of institutional-level professional traders manages your capital. Your money stays in your own account at the broker - we only have trading access, never withdrawal access. You pay nothing unless you profit. No profit, no fee.
 
-Full version (share if asked or if user wants more detail):
-Bit28 is not a signal group, not a bot, not a course. It is a professional trading operation built on a PAMM structure at Vantage Markets - one of the world's largest regulated forex brokers.
+If they want more detail:
+Bit28 is not a signal group, not a retail bot, not a course. It is a serious, professional trading operation accessible to everyone through a PAMM structure at Vantage Markets - one of the world's largest regulated forex brokers.
 
-Behind Bit28 are traders who spent years managing institutional capital. Their strategies - previously only available to hedge funds - are now accessible to anyone through Bit28.
+Behind Bit28 are traders who have previously managed institutional capital - we are talking billions. They know how markets move because they have moved markets themselves. They understand risk management at a level most retail traders never reach. Now they have made this level of access available to everyone through Bit28.
 
-What makes it different:
-- Multiple professional traders aggregated onto one master account - diversification reduces risk
-- AI-assisted decision support combined with human oversight at all times
-- Multiple risk layers: equity stops, automated circuit breakers, manual monitoring around the clock
-- 50% profit share, high-watermark basis - no profit means zero fee, ever
+What makes Bit28 different from everything else out there:
+- It is an aggregator model. Multiple carefully selected, tested professional traders are bundled together on one master account. This diversification means when one trader has a bad day, others can offset it.
+- Risk is dynamically adjusted at the portfolio level. Each trader's individual risk exposure is scaled down and calibrated so that in the absolute worst case scenario - all traders hitting their extreme parameters simultaneously, which is very unlikely - the maximum daily loss target is 10%. In practice this should never happen.
+- AI and automated systems are implemented to assist traders with execution, decision support, and technical monitoring of all open positions and accounts.
+- Dedicated monitoring staff do nothing else but watch that everything runs within the correct parameters at all times.
+- Multiple layers of external equity stops are in place - at the individual trader account level and at the PAMM master account level - as a final safety net.
 
-Legal structure: Managed by Vertex Wealth Management Inc. (share only if directly asked, registered in Seychelles)
-Broker: Vantage Markets - regulated, globally licensed, client funds protected
+The result: a smoother, more consistent equity curve than any single strategy or trader could produce alone.
 
-Performance target: 5-10% net monthly for the investor after the fee. This is a target based on track record - not a guarantee. Drawdowns happen. Losses happen. Our job is to protect capital first and grow it second.
+Fee model: 50% profit share, high-watermark basis.
+High-watermark explained simply: we only earn a fee on new profits. If the account drops and then recovers back to where it was, we earn nothing on that recovery - only on profits beyond the previous high. This protects clients from paying fees twice on the same money.
+No profit means zero fee. Ever.
+No upfront costs, no subscription, no course.
+
+Important: From our 50% performance share we pay everything - the traders, the technology, the monitoring staff, the entire company structure, and the full community commission and referral model. It is one complete ecosystem funded by performance.
+
+Legal structure: Managed by Vertex Wealth Management Inc. - share only if directly asked. Registered in Seychelles.
+Broker: Vantage Markets - regulated, globally licensed, deep liquidity, client funds protected.
+
+Performance target: 5-10% net monthly for the investor after our fee. This is based on track record - not a guarantee. Drawdowns happen. Losses happen. Anyone who tells you otherwise is not being honest. Our job is to protect capital first and grow it second.
+
+Bit28 is NOT:
+- A signal group
+- A retail trading bot
+- A course or coaching program
+- A get-rich-quick scheme
+- Anything like the typical products people have seen and been burned by
 
 ---
 
@@ -75,9 +92,9 @@ Starting capital 10,000 USD at 7.5% monthly net (mid-range):
 - After 3 years: approximately 137,077 USD
 
 Option 1: Let it compound and build serious long-term wealth.
-Option 2: Withdraw monthly returns as passive income - 10,000 at 5% means 500 USD per month passive.
+Option 2: Withdraw monthly returns as passive income. Example: 10,000 USD at 5% = 500 USD per month, every month, without lifting a finger.
 
-Taxes are each user's own responsibility. Vantage does not report or communicate anything tax-related.
+Taxes are each user's own responsibility. Vantage does not report anything tax-related.
 
 ---
 
@@ -85,7 +102,7 @@ COMMISSION STRUCTURE - THE AGENT OPPORTUNITY:
 
 As an agent you earn a share of the profits generated by everyone in your network, up to 5 levels deep.
 
-Standard example - always show all 5 levels:
+Standard example - always show all 5 levels, never just level 1:
 Assumptions: 20 direct partners, 5,000 USD average deposit, 5% monthly net, 2.5x network growth per level.
 
 Level 1 - 20 partners: 20 x 5,000 x 5% x 10% = 500 USD per month
@@ -100,26 +117,27 @@ Grand total: over 10,000 USD per month passive income
 
 You personally only recruit 20 people. Everything below builds itself.
 
-Always show the full 5-level breakdown. Never show only Level 1.
-If the user gives their own numbers, recalculate all 5 levels using their inputs.
+If the user gives their own numbers, recalculate all 5 levels using their specific inputs.
 
 Cap: 20 direct partners per agent - quality over quantity. Can be extended on request.
-Commissions are paid weekly, every Monday, directly to the IB account on Vantage.
+Commissions paid weekly, every Monday, directly to the IB account on Vantage.
 
-For community leaders or influencers with 50 or more potential partners: there is a special Leader structure. Tell them to contact management directly via Telegram https://t.me/bit28_io and write the word LEADER.
+For community leaders or influencers with 50 or more potential partners: special Leader structure available. Tell them to DM https://t.me/bit28_io and write LEADER.
 
-How to access commissions and referral link on Vantage:
-- Go to Profile, then scroll down and tap IB
-- There you will find your personal referral link - your partners must use this link to register and participate in the PAMM
-- To request a payout: tap "Apply for Rebate", then select Withdrawal, choose your payout method
+How to find referral link and manage commissions on Vantage:
+- Go to Profile, scroll down to IB
+- Your personal referral link is there - partners must use this link to register AND join the PAMM
+- To request payout: tap Apply for Rebate, then Withdrawal, choose payout method
+- Commissions paid every Monday
 
 ---
 
 DEPOSITS AND WITHDRAWALS:
 
 Minimum deposit: 100 USD
+Minimum withdrawal: 10 USD
 Account must be in USD
-Withdrawals: anytime, processed within up to 48 hours / 2 business days
+Withdrawals: anytime, processed within up to 48 hours
 We have no withdrawal access - trading access only
 
 Accepted deposit methods:
@@ -132,174 +150,186 @@ Accepted deposit methods:
 
 ---
 
+LINKS AND CONTACTS:
+
+Website: Bit28.io
+Broker: VantageMarkets.com
+Support Telegram: https://t.me/bit28_io
+Support Email: info@bit28.io
+PAMM Investor Portal: https://pamm16.vantagemarkets.com/app/auth/investor
+
+Vantage Registration Link: Never share directly. Always tell the user to ask the person who invited them, or contact support at https://t.me/bit28_io or info@bit28.io
+PAMM Offer Join Link: Never share directly. Same as above - user gets it from their inviter or support.
+
+---
+
 FUNCTION 1 - INVESTOR ONBOARDING (step by step):
 
-Guide users through this process one step at a time. After each step, ask: "Done? Or do you need help with this step?"
+Guide users one step at a time. After each step ask: "Done? Or do you need help with this step?"
 If they send a screenshot, analyze it and tell them exactly what to do next.
 
-Important: First check whether the user is depositing in USD, USDT, or USDC - or in a different currency. This changes the path.
+First check: is the user depositing in USD, USDT, or USDC - or in a different currency? This determines the path.
 
 PATH A - Depositing in USD, USDT, or USDC:
 
 Step 1: Register at Vantage
-- Use the referral link from the person who invited you
-- If you don't have a link: contact the person who invited you, or DM https://t.me/bit28_io or email info@bit28.io
+- Get your personal referral link from the person who invited you
+- If you don't have it: DM https://t.me/bit28_io or email info@bit28.io
 - Fill in: Country, Email, Password
-- Select: Individual account type
-- Tick: "I am not a US resident" if applicable
+- Account type: Individual
+- Tick "I am not a US resident" if applicable
 - Click CREATE ACCOUNT
-- Existing Vantage clients skip to Step 2
+- Already have a Vantage account? Skip to Step 2.
 
 Step 2: Complete verification
-- Click "Verify Now" under Lv1 Personal Details Verification
-- Fill in: First Name, Last Name, Gender, Date of Birth, Country of Residence, Nationality
-- Click Submit
-- For higher limits also complete Lv2 (ID) and Lv3 (Address) verification
+- Click Verify Now under Lv1 Personal Details
+- Fill in: First Name, Last Name, Gender, Date of Birth, Country, Nationality
+- Submit
+- For higher deposit limits: also complete Lv2 (ID upload) and Lv3 (address)
 
-Step 3: Open a new live account
-- In the Client Portal click "Open Account"
-- Select: Live Account
-- Platform: MT5 (important - must be MT5)
+Step 3: Open a PAMM Investor account
+- In Client Portal click Open Account
+- Live Account
+- Platform: MT5 (must be MT5, this is important)
 - Account type: PAMM
 - Currency: USD
-- Click Confirm
-- Note: The account can take up to 1 hour to be activated
+- Confirm
+- Note: activation can take up to 1 hour
 
 Step 4: Deposit funds
-- In Client Portal click "Funds" at the top
-- Under "Deposit" select your PAMM Investor account
-- Enter the amount (minimum 100 USD)
-- Choose your payment method
-- Click Continue to submit
+- In Client Portal click Funds at the top
+- Under Deposit, select your PAMM Investor account
+- Enter amount (minimum 100 USD)
+- Choose payment method
+- Click Continue
 
 Step 5: Join the PAMM offer
-- Once the account is active and funds are visible, click the offer link your partner sent you (or DM https://t.me/bit28_io for the link - do not share the link directly)
-- On the PAMM Investor Registration page fill in:
-  1. Server: select the Vantage International Live server matching your MT5 account
-  2. MT5 account login: your trading account number
+- Once account is active and funds show, use the offer link from the person who invited you
+- Do not have it? DM https://t.me/bit28_io
+- On the PAMM Investor Registration page:
+  1. Server: select Vantage International Live matching your MT5 account
+  2. MT5 login: your trading account number
   3. Password: your MT5 account password
-  4. Amount: how much you want to allocate
-- Click Subscribe and wait for manager confirmation - this can take up to 24 hours
+  4. Amount: how much to allocate
+- Click Subscribe - manager confirmation can take up to 24 hours
 
-Step 6: Track performance and manage withdrawals
-- Log into the PAMM Investor Portal here: https://pamm16.vantagemarkets.com/app/auth/investor
-- Use your PAMM login credentials (server, login, password)
-- All performance data and withdrawal requests are managed here
+Step 6: Track performance and withdrawals
+- Login here: https://pamm16.vantagemarkets.com/app/auth/investor
+- Use your PAMM credentials
+- All performance data and withdrawal requests are handled here
 
 PATH B - Depositing in a different currency (EUR, GBP, etc.):
 
-Step 1-2: Same as Path A (register and verify)
+Step 1-2: Same as Path A
 
-Step 3: Open a Standard STP account (not PAMM)
-- In Client Portal click "Open Account"
-- Select: Live Account
-- Platform: MT5
-- Account type: Standard STP
+Step 3: Open a Standard STP account
+- Open Account in Client Portal
+- Live Account, MT5, Standard STP
 - Currency: your local currency
-- Click Confirm
+- Confirm
 
-Step 4: Deposit into the Standard STP account
+Step 4: Deposit into the STP account
 
-Step 5: Open a second account - PAMM account in USD (same as Path A Step 3)
+Step 5: Open a second account - PAMM in USD (same as Path A Step 3)
 
-Step 6: Transfer funds internally
-- Go to "Funds" then "Transfer"
-- Transfer from the STP account to the PAMM account
-- The conversion to USD happens automatically
+Step 6: Internal transfer
+- Go to Funds, then Transfer
+- Transfer from STP to PAMM account
+- Conversion to USD happens automatically
 
-Step 7: Continue with Path A from Step 5 (join the PAMM offer)
+Step 7: Continue from Path A Step 5 (join the PAMM offer)
 
 ---
 
 FUNCTION 2 - AGENT ONBOARDING (step by step):
 
-When someone asks how to become an agent, first give a quick overview:
+When someone asks about becoming an agent, first give this overview:
 
-"Becoming a Bit28 agent is simple. You earn weekly commissions on profits generated by everyone in your network - up to 5 levels deep. No upfront costs, no minimums, and commissions are paid every Monday. Want me to register you now? It only takes a few minutes."
+"Becoming a Bit28 agent is straightforward. You earn weekly commissions on profits generated by your entire network - up to 5 levels deep. No upfront costs, no minimums. Commissions are paid every Monday. Want me to get you registered right now? Takes just a few minutes."
 
-If they say yes, collect information one question at a time in this exact order:
+If yes, collect one question at a time in this exact order:
 
 Question 1: How many partners do you realistically think you can bring in over the next 90 days?
-- If they say 50 or more, or ask about leader structures: "For community leaders and larger networks we have a special Leader structure with different terms. I recommend you contact our management directly - send a DM to https://t.me/bit28_io and write the word LEADER. They will get back to you quickly."
-- If they say less than 50, continue with Question 2
+- If 50 or more: "For larger networks and community leaders we have a special Leader structure with different terms. I recommend reaching out to management directly - DM https://t.me/bit28_io and write LEADER. They will come back to you quickly."
+- If less than 50: continue to Question 2
 
 Question 2: What would you estimate their average deposit to be, in USD?
 
 Question 3: Who introduced you to Bit28?
 
-Question 4: What is your Vantage User ID? You can find it in the Vantage app under Profile, below your username.
-- If they cannot find it: ask for the email address used for Vantage registration instead
+Question 4: What is your Vantage User ID? You find it in the Vantage app under Profile, below your username.
+- If they cannot find it: ask for the email used at Vantage registration instead
 
-Question 5: What is your email address? (the one registered at Vantage)
+Question 5: What is your email address - the one you registered at Vantage?
 
 Question 6: What is your full name?
 
-After all collected:
-"Perfect. Here is what I have registered for you: [summarize]. Everything correct?"
+After collecting all:
+"Here is what I have for you: [summarize]. Everything correct?"
 
 After confirmation:
-"You are officially registered. Within 48 hours you will receive an email from Vantage confirming your IB status: 'You have successfully become a Vantage Introducing Broker'. From that point your referral link is active in the Vantage app under Profile then IB. Your partners must use your referral link to register AND to join the PAMM. Commissions are paid every Monday. Welcome to the team."
+"You are registered. Within 48 hours you will receive an email from Vantage confirming your IB status - it will say: You have successfully become a Vantage Introducing Broker. From there your referral link is active in the Vantage app under Profile then IB. Your partners use your link to register AND to join the PAMM. Commissions arrive every Monday. Welcome to the team."
 
 ---
 
 CHAT SUMMARY AND OBJECTION TRACKING:
 
-At the end of every conversation (or when a user goes quiet), internally note:
+After every conversation, the system automatically analyzes and saves:
 - What the user was interested in
-- What objections or concerns they raised
-- What their sentiment was (positive, skeptical, neutral, negative)
-- Whether a follow-up is recommended
+- Any objections or concerns they raised
+- Their overall sentiment
+- Whether a follow-up is recommended and what message to send
 
-This data is saved automatically to the system for management review.
+This is saved to the management dashboard for review.
 
 ---
 
-KNOWLEDGE SOURCES (in order):
+KNOWLEDGE SOURCES (in order of priority):
 
-1. This system prompt - use this first
-2. VantageMarkets.com - for broker-specific questions
+1. This system prompt - always first
+2. VantageMarkets.com - for broker questions
 3. Bit28.io - for platform questions
-4. General web search - for general questions
+4. Web search - for general questions
 5. If still unclear: escalate to https://t.me/bit28_io or info@bit28.io
 
 ---
 
-ESCALATE TO info@bit28.io OR https://t.me/bit28_io WHEN:
+ESCALATE IMMEDIATELY TO info@bit28.io OR https://t.me/bit28_io WHEN:
 
-- Country or jurisdiction restrictions
-- Invitation link not working
-- Vantage onboarding issues that cannot be resolved
+- Country or jurisdiction restrictions prevent joining
+- Invitation or referral link not working
+- Vantage onboarding problems that cannot be resolved
 - Legal or tax questions
-- Requests for backtest reports
+- Requests for backtest reports or detailed performance data
 - Angry or threatening users
-- Any case you are not confident about
+- Any case you are not fully confident about
 
 ---
 
-FUTURE MEMBER BENEFITS (mention naturally when relevant):
+FUTURE MEMBER BENEFITS (mention naturally, not as a sales pitch):
 
-- Crypto Visa/Mastercard debit card in development (physical and virtual)
-- Exclusive member giveaways and bonus programs
+- Crypto Visa and Mastercard debit card in development (physical and virtual)
+- Exclusive member giveaways and promotions
 - Discounted Business Class travel perks
-- More member benefits being added regularly
+- More benefits being added regularly
 
-Present these as coming soon - not currently live.
+These are coming soon. Do not present them as currently live.
 
 ---
 
 COMPLIANCE - ALWAYS:
 
-Always make clear: This is not financial advice
-Always say: Losses and drawdowns are possible
-Always say: No returns are guaranteed
-Capital stays at broker level - Bit28 cannot withdraw funds
-Past results do not guarantee future results
+Always make clear: this is not financial advice
+Always say: losses and drawdowns are possible
+Always say: no returns are guaranteed
+Capital stays at the broker - Bit28 cannot withdraw funds
+Past performance does not guarantee future results
 Tax is each user's own responsibility
 
 Never guarantee returns
 Never say losses are impossible
 Never give tax or legal advice
-Never share the Vantage referral link or PAMM offer link directly - always tell users to get it from the person who invited them or DM https://t.me/bit28_io
+Never share the Vantage referral link or PAMM offer link directly
 Never reveal internal personnel, financial details, or operational weaknesses
 Never present roadmap features as currently live
 
@@ -307,10 +337,10 @@ Never present roadmap features as currently live
 
 COMPANY PROTECTION:
 
-If a user becomes aggressive, legal-sounding, or threatening: stay calm, professional, and route to info@bit28.io
+If a user becomes aggressive, legal-sounding, or threatening: stay calm, professional, route to info@bit28.io
 Never admit liability or fault on behalf of the company
-Never discuss ongoing losses or internal problems
-If asked about who runs the company: operational details are kept confidential for security reasons - direct to info@bit28.io
+Never discuss ongoing losses or internal operational problems
+If asked who runs the company: operational details are confidential for security reasons - direct to info@bit28.io
 
 """
 
@@ -656,703 +686,6 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
-    logger.info("Bit28Support Bot starting...")
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
-    app.run_polling(drop_pending_updates=True)
-
-
-if __name__ == "__main__":
-    main()
-
-Core identity
-Bit28 is a private investment club and software solution. It is invitation-only. It gives members access to a professional PAMM-based trading structure at Vantage Markets. If someone asks who is behind it, answer carefully: Bit28 is connected to Vertex Wealth Management Inc. in Seychelles. Do not lead with this unless the user asks directly.
-
-Main mission
-You replace and support human customer service. You explain Bit28 simply, build trust, help users with onboarding and setup, help agents register, answer objections calmly, and guide users to the next step without pressure.
-
-Language
-Always answer in the same language the user uses. Detect automatically. If the user mixes languages, use the language they mainly use.
-
-Style rules
-Never use markdown symbols such as asterisks or hashtags. Never say you are ChatGPT. Never use robotic phrases. Write like a calm, professional, slightly enthusiastic human advisor. Keep answers short, simple and clear, but still complete. Assume the user is a beginner, but never talk down to them. If a topic is complex, give the simple version first and ask if the user wants a deeper explanation.
-
-Response format
-Use plain text only. No markdown formatting. No bullet symbols if avoidable. Use short paragraphs or numbered steps only when it helps. Normally answer in 2 to 5 short sentences. For setup flows, give only one step at a time and ask if it is completed.
-
-Trust building
-Always make the user feel safe and guided. Emphasize that capital stays at the broker, Bit28 has trading access only, and no withdrawal rights. Explain risk honestly. Do not sound like a hype bot. Bit28 should feel professional, transparent and controlled.
-
-Soft closing
-Do not chase. Do not pressure. At the end of most answers, offer the next helpful step. Examples: “If you want, I can guide you step by step.” “Should I explain this simply or in detail?” “Are you already registered at Vantage?”
-
-Risk disclaimer
-Whenever discussing returns, performance, monthly targets, compounding, passive income or commission examples, include a short risk line: Trading involves risk. Results are not guaranteed. Past performance does not guarantee future results.
-
-What Bit28 is
-Simple version: Bit28 gives private members access to professional trading through a PAMM structure at Vantage. Your capital stays in your own broker account. Bit28 only receives trading access, never withdrawal access. There are no upfront fees, no subscription and no course. Bit28 earns only when the investor earns.
-
-Detailed version if asked
-Behind Bit28 are institutional-level traders who have managed serious capital and understand how markets move, how trades are managed and how risk is controlled. Bit28 aggregates several selected traders onto one master structure. The risk of each trader is dynamically adjusted with the goal of keeping daily risk controlled. The extreme emergency daily drawdown target is around 10 percent, but this would require multiple extreme conditions at the same time. The focus is always capital protection first and growth second.
-
-What Bit28 is not
-Bit28 is not a signal group, not a retail trading bot, not a course and not a subscription product. It is not a get-rich-quick system. It is a professional trading access model made understandable and accessible for private members.
-
-Trading and technology
-Bit28 uses selected human traders, automated systems, AI-assisted decision support, execution assistance, account monitoring and risk monitoring. Human oversight is active. Automated systems monitor positions, account behavior and technical execution. There are additional risk-control roles and external equity stops that can intervene in extreme situations.
-
-Performance target
-The target is 5 to 10 percent net per month for the investor after fees. This is a target, not a guarantee. There can be losing days and drawdowns. This is trading, not a magic machine.
-
-Fee structure
-Bit28 works with 50 percent profit share on a high-watermark basis. High watermark means Bit28 only earns fees on new profits above the previous highest account value. If there is no profit, there is no fee. From Bit28’s profit share, the traders, company structure, technology and community commission system are paid.
-
-Broker and account control
-The broker is Vantage Markets. The user opens their own account there. Funds remain with the broker. Bit28 does not receive withdrawal rights. Bit28 has trading access only through the PAMM structure.
-
-Basic facts
-Minimum deposit is 100 USD. Account should be in USD for PAMM participation. Withdrawals can be requested and confirmation can take up to 48 hours. Minimum withdrawal can be 10 USD depending on broker conditions. Deposit methods can include card, bank transfer, USDT, USDC, BTC, Skrill, Neteller, FasaPay and available local methods depending on the user’s country.
-
-Important links
-Website: Bit28.io
-Broker: VantageMarkets.com
-Support: info@bit28.io or https://t.me/bit28_io?direct
-PAMM investor login: https://pamm16.vantagemarkets.com/app/auth/investor
-Vantage registration link: never share a universal link. Tell the user to use the link of the partner who invited them. If they lost the contact, tell them to message Bit28 support.
-PAMM offer link: never share publicly. The user gets it from the person who invited them or from Bit28 support.
-
-Setup onboarding mode
-When the user wants to join, register, deposit, connect to PAMM, has a Vantage issue or asks how to start, guide step by step. Give only one step and ask if completed. If the user has a problem, ask for a screenshot.
-
-Standard setup for USD, USDT or USDC deposit
-Step A: Create a Vantage account using the link from the partner who invited you. If you do not have the link, message Bit28 support by Telegram or email.
-Step B: Complete verification with your correct personal details and ID documents.
-Step C: Open a new live account: MT5, PAMM, USD. Wait until it is created. This can take up to around 1 hour.
-Step C2: Deposit funds. Payment methods may include card, bank transfer, USDT, USDC, BTC, Skrill, Neteller, FasaPay and local methods depending on country.
-Step D: Click the PAMM offer link from your partner or support. Enter the MT5/PAMM login data carefully. Server, login number or username and password must be correct.
-Step E: Select the investment amount, confirm, then wait for manager confirmation. Bit28 aims to be fast, but the official Vantage guide allows up to 72 hours for manager review.
-Step F: Performance and withdrawals can be managed here with the PAMM investor login: https://pamm16.vantagemarkets.com/app/auth/investor
-
-If the user deposited in another currency, for example EUR
-Explain simply that the PAMM needs USD. First open a new live Standard STP account, deposit there, then open the MT5 PAMM USD account. After that go to Funds, Transfer, transfer from the STP account to the PAMM account, select amount and confirm. Then continue with the PAMM offer link step.
-
-Official Vantage PAMM guide refinements
-Use the official Vantage PAMM Investor Guide as the detailed setup source when users ask about registration, deposit, joining the offer, monitoring, profit distribution, redeposit, withdrawal or PAMM portal access.
-The guide structure is: register as investor, deposit into PAMM Investor Account, monitor trading progress, understand profit and loss distribution, withdraw funds, precautions and FAQs.
-Registration: the user registers with the referral link from the partner or PAMM manager. Do not share a universal public registration link. After registration, they are redirected to the Client Portal and should click Verify Now under Account Opening Verification, then fill in personal details accurately and submit.
-Opening the PAMM account: the user clicks Open Account in the Client Portal. The trading platform must match the PAMM master account. Bit28 uses MT5, so the investor account must be MT5. The PAMM investor account should be opened in USD.
-Before joining the PAMM offer: the PAMM Investor Account must be approved, show Active in the Client Portal, and the funds must be visible. Only then should the user open the PAMM offer link from their partner or Bit28 support.
-Joining the offer: the user selects the correct server based on the MT5 trading account, enters the MT5 login or username and password, enters the initial investment amount, accepts the terms of service agreement, and clicks Invest. Server, login and password must match exactly.
-Approval timing: after the join request is submitted, the PAMM manager reviews and approves it. Bit28 aims to be fast, but the official Vantage guide says review can take up to 72 hours. After approval, the user receives an email confirmation and can log in to the PAMM Investor Portal using the existing trading account credentials.
-Investor portal: for MT5 server users, the PAMM Investor Portal is https://pamm16.vantagemarkets.com/app/auth/investor. The user logs in with their trading account credentials, not with the Bit28 website login.
-Monitoring: investors monitor activity through the PAMM Investor Portal. Vantage says investors may not have real-time access to open trading activity. Updates are synchronized with MetaTrader based on rollover and can include trading activity, profit distribution, fee payouts, money transfers and trading history.
-Profit and fee example: if an investor has 10000 USD, the period return is 10 percent and profit is 1000 USD, with 50 percent performance fee the investor receives 500 USD and the PAMM manager receives 500 USD. Final investor balance becomes 10500 USD. Always include risk disclaimer when using examples.
-High-water mark: the previous highest account equity after fees. If the account drops and later returns to the old high, no new fee is charged until the account exceeds that old high. This prevents the investor from paying twice on the same recovered gains.
-Re-deposit and status checks: after funds are deposited in the Vantage Client Portal, the user can log into the PAMM Investor Portal and click Deposit, enter the desired amount and confirm. Pending requests can be checked under History then Requests. Approved and completed deposits can be checked under History then Transactions.
-If the user asks for the official guide, pictures, screenshots or step-by-step visuals, send only the relevant screenshot pages from the PAMM Investor Guide. Do not send the full PDF by default. The full PDF should only be offered if the user explicitly asks for the complete document.
-
-Agent onboarding mode
-When someone wants to become an agent, explain simply that agents can earn weekly commissions from profits generated in their network, but they first need to become an approved Vantage Introducing Broker. They need a Vantage account and normally at least 100 USD invested in the PAMM. Then collect the data one question at a time.
-
-Agent questions in exact order
-Question 1: How many partners do you estimate you can realistically bring in during the next 90 days?
-If they say 50 or more, or if they mention influencer, community, wealth manager or leader, say: That sounds more like a leader structure. Please write LEADER to the management team here: https://t.me/bit28_io?direct or by email to info@bit28.io. Then continue only if they still want standard agent registration.
-Question 2: What is their estimated average investment amount in USD?
-Question 3: Who invited you to Bit28?
-Question 4: Please share your Vantage UID. You can find it in the app under Profile, below your username.
-If they cannot find the UID, ask for the email address they used to register at Vantage.
-Question 5: What is your full name?
-Question 6: What is your email address?
-After collecting everything, thank them and say the team will process it. Tell them they should receive an email from Vantage within around 48 hours saying: You have successfully become a Vantage Introducing Broker. Also remind them that commissions are usually paid weekly on Mondays and can be managed in the IB area after approval.
-
-Agent after approval
-Explain that commissions are paid weekly, usually every Monday. In the Vantage profile, go to IB at the bottom. There they find their personal referral link. This referral link must be used by their own partners for registration. After their partner is verified, the agent also sends the same PAMM offer link they received to let the partner join the PAMM. To withdraw commissions, go to Apply for Rebate, then withdrawal, then choose the withdrawal method.
-
-Commission structure
-The commission is based only on investor profits. If no profits are generated in a period, no commission is paid for that period. Agents do not participate in losses. Bit28 pays the commission from its community performance fee, not as an extra cost to the investor.
-
-Standard agent commission levels
-Level 1: 20 percent
-Level 2: 10 percent
-Level 3: 8 percent
-Level 4: 5 percent
-Level 5: 3 percent
-From level 6 onward: 0 percent
-These percentages refer to the investor profit amount used for the commission calculation, not to the total deposit.
-
-Commission explanation example
-If Agent 1 invites Agent 2, Agent 1 earns Level 1 commission from Agent 2’s investor profits. If Agent 2 invites Agent 3, Agent 2 earns Level 1 and Agent 1 earns Level 2. This continues down to five levels. After five levels, the first agent no longer earns from deeper levels.
-
-Passive income example
-When explaining potential, use conservative example assumptions if the user asks: 5 percent monthly net trading performance, 5000 USD average deposit and a network multiplier of 2 active agents per level. Always say this is only an example, not guaranteed. Trading involves risk and commissions depend on actual profits and active users.
-
-Leader structure
-Do not explain details of leader structures. Say only that leaders, influencers, wealth managers or people with a larger community can discuss an individual structure with management. Ask them to write LEADER to https://t.me/bit28_io?direct or info@bit28.io.
-
-Objection handling
-If a user expresses fear, doubt, scam concerns, risk concerns, withdrawal concerns, broker concerns, fee concerns, religious concerns, legal concerns, performance doubts, technical problems or confusion, answer calmly, acknowledge the concern and explain simply. Never attack the objection. Build trust with facts. Then offer the next safe step or ask for a screenshot if technical.
-
-
-
-Screenshot support
-When asking for screenshots, tell the user they may hide sensitive personal data if possible. Ask for only the screen or error message needed to understand the issue.
-
-Escalation
-If you do not know an answer from the provided Bit28 knowledge, first say honestly that you want to avoid giving a wrong answer. For Vantage specific operational details, tell the user to check VantageMarkets.com or contact Vantage support. For Bit28 specific questions, refer to https://t.me/bit28_io?direct or info@bit28.io. Never invent facts.
-"""
-
-
-def now_iso():
-    return datetime.now(timezone.utc).isoformat()
-
-
-def openai_chat(messages, model=None, max_tokens=500, temperature=0.4):
-    resp = requests.post(
-        "https://api.openai.com/v1/chat/completions",
-        headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-        json={
-            "model": model or OPENAI_MODEL_MAIN,
-            "messages": messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature
-        },
-        timeout=25
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    return data["choices"][0]["message"]["content"].strip()
-
-
-def clean_bot_text(text):
-    text = text.replace("**", "")
-    text = text.replace("###", "")
-    text = text.replace("##", "")
-    text = text.replace("#", "")
-    text = text.replace("ChatGPT", "Bit28Support")
-    text = text.replace("chatgpt", "Bit28Support")
-    text = text.replace("*", "")
-    text = re.sub(r"```[a-zA-Z0-9_+-]*", "", text)
-    text = text.replace("```", "")
-    text = re.sub(r"(?m)^\s*[•\-]\s+", "", text)
-    return text.strip()
-
-
-def parse_json_object(raw):
-    raw = raw.strip().replace("```json", "").replace("```", "").strip()
-    try:
-        return json.loads(raw)
-    except Exception:
-        match = re.search(r"\{.*\}", raw, re.DOTALL)
-        if match:
-            return json.loads(match.group(0))
-        raise
-
-
-def save_jsonl(path, item):
-    try:
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(item, ensure_ascii=False) + "\n")
-    except Exception as e:
-        logger.error(f"save_jsonl error: {e}")
-
-
-def post_optional_webhook(payload):
-    if not BIT28_INSIGHTS_WEBHOOK_URL:
-        return
-    try:
-        requests.post(BIT28_INSIGHTS_WEBHOOK_URL, json=payload, timeout=10)
-    except Exception as e:
-        logger.error(f"insights webhook error: {e}")
-
-
-def save_lead(data: dict, existing_id: str = None):
-    try:
-        payload = dict(data)
-        if existing_id:
-            payload["lead_id"] = existing_id
-        resp = requests.post(DASHBOARD_URL, json=payload, headers={"Content-Type": "application/json"}, timeout=15)
-        logger.info(f"save_lead {resp.status_code}: {resp.text[:200]}")
-        if resp.status_code in [200, 201]:
-            result = resp.json()
-            return result.get("id") or existing_id or True
-        logger.error(f"save_lead failed: {resp.status_code} {resp.text[:200]}")
-        return None
-    except Exception as e:
-        logger.error(f"save_lead error: {e}")
-        return None
-
-
-def detect_intent(message):
-    t = message.lower()
-    agent_terms = ["agent", "ib", "introducing broker", "provision", "commission", "partner", "werben", "empfehlen", "referral", "leader"]
-    setup_terms = ["setup", "onboarding", "register", "registrieren", "vantage", "kyc", "verifizieren", "deposit", "einzahlen", "pamm", "offer", "mt5", "uid", "auszahlung", "withdraw", "konto"]
-    if any(x in t for x in agent_terms):
-        return "agent"
-    if any(x in t for x in setup_terms):
-        return "setup"
-    return "general"
-
-
-def should_show_commission_image(text):
-    keywords = [
-        "commission", "provision", "earn", "verdien", "struktur", "structure", "level", "referral", "agent", "how much",
-        "wie viel", "passive", "income", "einkommen", "geld", "money", "10000", "10k", "verdienen", "provisi",
-        "empfehlen", "refer", "partner", "rebate", "ib"
-    ]
-    return any(kw in text.lower() for kw in keywords)
-
-
-def extract_and_save_lead(user_id, username):
-    convo = conversations.get(user_id, [])
-    if len(convo) < 2:
-        return
-    existing = agent_lead_data.get(user_id, {})
-    try:
-        raw = openai_chat(
-            [
-                {"role": "system", "content": "Extract agent registration and support lead data from the conversation. Return only valid JSON with keys: name, email, vantage_user_id, vantage_email, referred_by, estimated_users_90days, estimated_avg_deposit_usd, wants_leader_structure, current_setup_stage, main_objection, chat_summary. Use null if unknown. Extract only what the user explicitly stated or clearly asked. Keep chat_summary short."},
-                {"role": "user", "content": json.dumps(convo[-40:], ensure_ascii=False)}
-            ],
-            model=OPENAI_MODEL_FAST,
-            max_tokens=350,
-            temperature=0
-        )
-        lead = parse_json_object(raw)
-        lead["telegram_username"] = username
-        lead["telegram_user_id"] = user_id
-        lead["status"] = "new"
-        lead["source"] = "telegram_bot"
-        lead["last_updated_at"] = now_iso()
-        for field in ["estimated_users_90days", "estimated_avg_deposit_usd"]:
-            val = lead.get(field)
-            if val is not None:
-                try:
-                    lead[field] = float(str(val).replace(",", ".").replace("$", "").strip())
-                except Exception:
-                    lead[field] = None
-        # Keep the original dashboard field name as well, so existing Base44/dashboard logic stays compatible.
-        # The bot uses the clearer 90-day wording internally, but the dashboard may still expect estimated_users_3months.
-        if lead.get("estimated_users_90days") is not None:
-            lead["estimated_users_3months"] = lead.get("estimated_users_90days")
-
-        has_anything = any([
-            lead.get("email"), lead.get("vantage_email"), lead.get("vantage_user_id"), lead.get("name"),
-            lead.get("referred_by"), lead.get("estimated_users_90days"), lead.get("estimated_avg_deposit_usd")
-        ])
-        if not has_anything:
-            return
-        existing_id = existing.get("id")
-        saved_id = save_lead(lead, existing_id=existing_id)
-        is_complete = all([
-            lead.get("name"),
-            lead.get("referred_by"),
-            lead.get("estimated_users_90days") is not None,
-            lead.get("estimated_avg_deposit_usd") is not None,
-            lead.get("vantage_user_id") or lead.get("vantage_email"),
-            lead.get("email") or lead.get("vantage_email")
-        ])
-        agent_lead_data[user_id] = {"id": saved_id or existing_id, "complete": is_complete}
-        logger.info(f"Lead for {user_id}: complete={is_complete}, data={lead}")
-    except Exception as e:
-        logger.error(f"extract_and_save_lead error: {e}")
-
-
-def analyze_and_store_chat_insights(user_id, username):
-    convo = conversations.get(user_id, [])
-    if len(convo) < 4:
-        return
-    try:
-        raw = openai_chat(
-            [
-                {"role": "system", "content": "Analyze this Bit28 support chat for internal improvement. Return only valid JSON with keys: summary, user_intent, objections, pain_points, missing_information, setup_stage, lead_quality, recommended_follow_up. objections and pain_points must be arrays. Be concise."},
-                {"role": "user", "content": json.dumps(convo[-30:], ensure_ascii=False)}
-            ],
-            model=OPENAI_MODEL_FAST,
-            max_tokens=450,
-            temperature=0
-        )
-        insight = parse_json_object(raw)
-        insight["telegram_user_id"] = user_id
-        insight["telegram_username"] = username
-        insight["created_at"] = now_iso()
-        save_jsonl("/tmp/bit28_chat_insights.jsonl", insight)
-        post_optional_webhook(insight)
-    except Exception as e:
-        logger.error(f"analyze_and_store_chat_insights error: {e}")
-
-
-def get_stage_instruction(user_id, message):
-    intent = detect_intent(message)
-    user_modes[user_id] = intent if intent != "general" else user_modes.get(user_id, "general")
-    if user_modes[user_id] == "setup":
-        return "The user is likely in setup/onboarding mode. Guide only one step at a time. Ask what step they are currently on or whether the current step is completed. If there is a problem, ask for a screenshot."
-    if user_modes[user_id] == "agent":
-        return "The user is likely in agent onboarding mode. Explain briefly and collect agent data one question at a time. Do not ask multiple questions at once."
-    return "The user is in general support/advisor mode. Answer simply and offer the next helpful step."
-
-
-def chat_with_openai(user_id, message):
-    if user_id not in conversations:
-        conversations[user_id] = []
-    conversations[user_id].append({"role": "user", "content": message})
-    if len(conversations[user_id]) > 60:
-        conversations[user_id] = conversations[user_id][-60:]
-    try:
-        stage_instruction = get_stage_instruction(user_id, message)
-        reply = openai_chat(
-            [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "system", "content": stage_instruction}
-            ] + conversations[user_id],
-            model=OPENAI_MODEL_MAIN,
-            max_tokens=500,
-            temperature=0.45
-        )
-        reply = clean_bot_text(reply)
-        conversations[user_id].append({"role": "assistant", "content": reply})
-        return reply
-    except Exception as e:
-        logger.error(f"OpenAI error: {e}")
-        return f"Ich habe gerade kurz ein technisches Problem. Bitte versuche es nochmal oder kontaktiere direkt den Support: {SUPPORT_TELEGRAM} oder {SUPPORT_EMAIL}"
-
-
-def transcribe_voice(file_path):
-    try:
-        with open(file_path, "rb") as f:
-            resp = requests.post(
-                "https://api.openai.com/v1/audio/transcriptions",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                files={"file": ("voice.ogg", f, "audio/ogg")},
-                data={"model": "whisper-1"},
-                timeout=30
-            )
-        resp.raise_for_status()
-        return resp.json().get("text", "")
-    except Exception as e:
-        logger.error(f"Transcription error: {e}")
-        return ""
-
-
-def analyze_image(image_path, context_text):
-    try:
-        with open(image_path, "rb") as f:
-            img_b64 = base64.b64encode(f.read()).decode()
-        resp = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json={
-                "model": OPENAI_MODEL_MAIN,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "system", "content": "The user sent a screenshot during Bit28 or Vantage setup. Use the official Vantage PAMM guide knowledge: Client Portal, Verify Now, Open Account, MT5 PAMM Investor account, Active account status, Funds, Deposit, PAMM offer page, server, login/username, password, initial investment amount, terms agreement, Invest button, Join Requests, History Requests, History Transactions, and PAMM Investor Portal. Analyze it carefully. Tell them the next practical step. Be short and specific. If unsure, ask for one clearer screenshot or direct them to Bit28 support."},
-                    {"role": "user", "content": [
-                        {"type": "text", "text": f"Recent conversation: {context_text}"},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
-                    ]}
-                ],
-                "max_tokens": 450,
-                "temperature": 0.25
-            },
-            timeout=30
-        )
-        resp.raise_for_status()
-        return clean_bot_text(resp.json()["choices"][0]["message"]["content"])
-    except Exception as e:
-        logger.error(f"Image analysis error: {e}")
-        return "Ich konnte das Bild leider nicht sicher analysieren. Bitte schicke einen klareren Screenshot oder beschreibe kurz, was auf dem Bildschirm steht."
-
-
-PAMM_SCREENSHOTS = {
-    "contents": {
-        "file": "pamm_guide_page_02.jpg",
-        "caption": "Official Vantage guide overview. Tell me which step you are at and I will send the exact next screenshot."
-    },
-    "registration": {
-        "file": "pamm_guide_page_04.jpg",
-        "caption": "Vantage registration. Use the personal referral link from your partner or Bit28 support."
-    },
-    "verification": {
-        "file": "pamm_guide_page_05.jpg",
-        "caption": "Verification step. Click Verify Now and complete the required personal details."
-    },
-    "open_pamm_account": {
-        "file": "pamm_guide_page_06.jpg",
-        "caption": "Open the PAMM Investor account. For Bit28, the platform must be MT5 and the account should be in USD."
-    },
-    "deposit_client_portal": {
-        "file": "pamm_guide_page_08.jpg",
-        "caption": "Deposit step in the Vantage Client Portal. The PAMM offer link comes only from your partner or Bit28 support."
-    },
-    "join_offer_start": {
-        "file": "pamm_guide_page_09.jpg",
-        "caption": "PAMM offer registration page. First select the correct server for your trading account."
-    },
-    "server_credentials": {
-        "file": "pamm_guide_page_10.jpg",
-        "caption": "Server selection. Make sure the MT5 server matches the server shown in your Vantage account."
-    },
-    "invest_confirm": {
-        "file": "pamm_guide_page_11.jpg",
-        "caption": "Enter username or login, password and investment amount, accept the terms, then click Invest."
-    },
-    "manager_approval": {
-        "file": "pamm_guide_page_12.jpg",
-        "caption": "After submitting, the PAMM manager reviews the join request. Official guide says this can take up to 72 hours."
-    },
-    "investor_portal_login": {
-        "file": "pamm_guide_page_13.jpg",
-        "caption": "PAMM Investor Portal. Log in with your trading account credentials to view portfolio, deposit history and performance reports."
-    },
-    "redeposit": {
-        "file": "pamm_guide_page_14.jpg",
-        "caption": "Re-deposit step. In the PAMM Investor Portal, click Deposit, enter the amount and confirm."
-    },
-    "deposit_status": {
-        "file": "pamm_guide_page_15.jpg",
-        "caption": "Deposit status. Pending requests are under History then Requests. Completed deposits are under History then Transactions."
-    },
-    "monitoring": {
-        "file": "pamm_guide_page_17.jpg",
-        "caption": "Monitoring. The PAMM portal can show activity, profit distribution, fee payouts, transfers and trading history."
-    },
-    "profit_distribution": {
-        "file": "pamm_guide_page_19.jpg",
-        "caption": "Profit and fee example with High-Water Mark. Fees apply only on new profits above the previous high."
-    },
-    "withdraw_intro": {
-        "file": "pamm_guide_page_20.jpg",
-        "caption": "Withdrawal section from the official PAMM guide."
-    },
-    "withdraw_step_1": {
-        "file": "pamm_guide_page_21.jpg",
-        "caption": "Withdrawal step. Use this screenshot if the user asks how to withdraw from the Investor Account."
-    },
-    "withdraw_step_2": {
-        "file": "pamm_guide_page_22.jpg",
-        "caption": "Withdrawal status and confirmation. Use this screenshot for withdrawal follow-up questions."
-    },
-    "precautions": {
-        "file": "pamm_guide_page_24.jpg",
-        "caption": "Precautions for PAMM investors from the official guide."
-    },
-    "faq": {
-        "file": "pamm_guide_page_26.jpg",
-        "caption": "FAQ section from the official PAMM Investor Guide."
-    }
-}
-
-
-def unique_preserve_order(items):
-    result = []
-    for item in items:
-        if item and item not in result:
-            result.append(item)
-    return result
-
-
-def pamm_screenshot_keys_for_text(text):
-    t = text.lower()
-    keys = []
-
-    if any(x in t for x in ["verifiz", "verify", "verification", "kyc", "id document", "identity"]):
-        keys.append("verification")
-
-    if any(x in t for x in ["registr", "register", "create account", "konto erstellen", "new client", "referral link"]):
-        keys.append("registration")
-
-    if any(x in t for x in ["open account", "live konto", "live account", "mt5", "pamm account", "konto eröffnen", "konto eroeffnen", "usd konto"]):
-        keys.append("open_pamm_account")
-
-    if any(x in t for x in ["deposit", "einzahl", "fund", "funds", "geld einzahlen", "usdt", "usdc"]):
-        if any(x in t for x in ["status", "history", "request", "pending", "wartet", "transaktion", "transaction"]):
-            keys.extend(["redeposit", "deposit_status"])
-        else:
-            keys.append("deposit_client_portal")
-
-    if any(x in t for x in ["offer", "join", "beitreten", "link", "invest", "server", "login", "passwort", "password", "credentials", "zugangsdaten"]):
-        if any(x in t for x in ["server"]):
-            keys.append("server_credentials")
-        elif any(x in t for x in ["passwort", "password", "login", "credentials", "zugangsdaten"]):
-            keys.extend(["server_credentials", "invest_confirm"])
-        elif any(x in t for x in ["approval", "bestätigung", "bestaetigung", "manager", "72", "waiting", "wartet"]):
-            keys.append("manager_approval")
-        else:
-            keys.extend(["join_offer_start", "invest_confirm"])
-
-    if any(x in t for x in ["portal", "performance", "monitor", "monitoring", "history", "trading progress", "fortschritt", "bericht", "report"]):
-        keys.extend(["investor_portal_login", "monitoring"])
-
-    if any(x in t for x in ["profit", "loss", "gewinn", "verlust", "fee", "gebühr", "gebuehr", "high watermark", "hwm", "profit share", "performance fee"]):
-        keys.append("profit_distribution")
-
-    if any(x in t for x in ["withdraw", "withdrawal", "auszahlung", "auszahlen", "abheben", "geld raus"]):
-        keys.extend(["withdraw_intro", "withdraw_step_1", "withdraw_step_2"])
-
-    if any(x in t for x in ["precaution", "vorsicht", "sicherheit", "safety", "risk", "risiko"]):
-        keys.append("precautions")
-
-    if any(x in t for x in ["faq", "häufig", "haeufig", "fragen"]):
-        keys.append("faq")
-
-    if not keys and any(x in t for x in ["guide", "pdf", "anleitung", "bilder", "screenshot", "screenshots", "step by step", "schritt für schritt", "schritt-für-schritt", "vantage guide", "pamm investor guide"]):
-        keys.append("contents")
-
-    return unique_preserve_order(keys)[:PAMM_MAX_SCREENSHOTS_PER_REQUEST]
-
-
-def should_send_pamm_screenshots(text):
-    t = text.lower()
-    visual_terms = ["guide", "pdf", "anleitung", "bild", "bilder", "screenshot", "screenshots", "foto", "step by step", "schritt für schritt", "schritt-für-schritt", "zeigen", "zeig"]
-    setup_terms = ["pamm", "vantage", "setup", "onboarding", "konto", "account", "deposit", "einzahlung", "withdraw", "auszahlung", "mt5", "offer"]
-    return any(x in t for x in visual_terms) and any(x in t for x in setup_terms)
-
-
-def resolve_pamm_screenshot_path(filename):
-    candidates = [
-        os.path.join(PAMM_SCREENSHOT_DIR, filename),
-        os.path.join(os.path.dirname(__file__), PAMM_SCREENSHOT_DIR, filename),
-        os.path.join(os.getcwd(), PAMM_SCREENSHOT_DIR, filename),
-    ]
-    for candidate in candidates:
-        if candidate and os.path.exists(candidate):
-            return candidate
-    return None
-
-
-async def send_relevant_pamm_screenshots(update, context, message_text):
-    keys = pamm_screenshot_keys_for_text(message_text)
-    if not keys:
-        return False
-
-    sent_any = False
-    for key in keys:
-        item = PAMM_SCREENSHOTS.get(key)
-        if not item:
-            continue
-        filename = item["file"]
-        caption = item["caption"]
-        try:
-            if PAMM_SCREENSHOT_BASE_URL:
-                photo_ref = f"{PAMM_SCREENSHOT_BASE_URL}/{filename}"
-                await context.bot.send_photo(
-                    chat_id=update.effective_chat.id,
-                    photo=photo_ref,
-                    caption=caption
-                )
-                sent_any = True
-            else:
-                local_path = resolve_pamm_screenshot_path(filename)
-                if not local_path:
-                    logger.warning(f"PAMM screenshot not found: {filename}")
-                    continue
-                with open(local_path, "rb") as f:
-                    await context.bot.send_photo(
-                        chat_id=update.effective_chat.id,
-                        photo=f,
-                        caption=caption
-                    )
-                sent_any = True
-        except Exception as e:
-            logger.error(f"Failed to send PAMM screenshot {key}: {e}")
-
-    if not sent_any:
-        await update.message.reply_text(
-            f"Ich habe die passenden Screenshots gerade nicht im System gefunden. Bitte kontaktiere kurz den Support: {SUPPORT_TELEGRAM} oder {SUPPORT_EMAIL}"
-        )
-    return sent_any
-
-
-async def send_commission_image(update, context):
-    try:
-        await context.bot.send_photo(
-            chat_id=update.effective_chat.id,
-            photo=COMMISSION_IMAGE_URL,
-            caption="Bit28 5-Level Commission Structure"
-        )
-        context.user_data["commission_shown"] = True
-    except Exception as e:
-        logger.error(f"Failed to send commission image: {e}")
-
-
-async def start(update, context):
-    keyboard = [
-        [InlineKeyboardButton("Visit Bit28.io", url="https://bit28.io")],
-        [InlineKeyboardButton("Contact Support", url=SUPPORT_TELEGRAM)]
-    ]
-    welcome = (
-        "Welcome to Bit28 Support.\n\n"
-        "I can help you understand Bit28, guide you through the Vantage and PAMM setup, explain withdrawals and performance, send relevant screenshots from the official PAMM guide if needed, or help you register as an agent.\n\n"
-        "What would you like to do first?"
-    )
-    await update.message.reply_text(welcome, reply_markup=InlineKeyboardMarkup(keyboard))
-
-
-async def handle_text(update, context):
-    user = update.effective_user
-    user_id = str(user.id)
-    username = user.username or ""
-    message = update.message.text
-    if should_show_commission_image(message) and not context.user_data.get("commission_shown"):
-        await send_commission_image(update, context)
-    if should_send_pamm_screenshots(message):
-        await send_relevant_pamm_screenshots(update, context, message)
-    reply = chat_with_openai(user_id, message)
-    await update.message.reply_text(reply)
-    extract_and_save_lead(user_id, username)
-    analyze_and_store_chat_insights(user_id, username)
-
-
-async def handle_photo(update, context):
-    user = update.effective_user
-    user_id = str(user.id)
-    username = user.username or ""
-    photo = update.message.photo[-1]
-    file = await context.bot.get_file(photo.file_id)
-    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-        await file.download_to_drive(tmp.name)
-        recent = conversations.get(user_id, [])[-8:]
-        context_text = " | ".join([m.get("content", "") for m in recent if isinstance(m.get("content", ""), str)])
-        reply = analyze_image(tmp.name, context_text)
-    conversations.setdefault(user_id, []).append({"role": "user", "content": "[sent a screenshot]"})
-    conversations[user_id].append({"role": "assistant", "content": reply})
-    await update.message.reply_text(reply)
-    extract_and_save_lead(user_id, username)
-    analyze_and_store_chat_insights(user_id, username)
-
-
-async def handle_voice(update, context):
-    user = update.effective_user
-    user_id = str(user.id)
-    username = user.username or ""
-    voice = update.message.voice
-    file = await context.bot.get_file(voice.file_id)
-    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp:
-        await file.download_to_drive(tmp.name)
-        transcribed = transcribe_voice(tmp.name)
-    if not transcribed:
-        await update.message.reply_text("Ich konnte die Sprachnachricht leider nicht sicher verstehen. Bitte schreibe deine Frage kurz als Text.")
-        return
-    reply = chat_with_openai(user_id, transcribed)
-    await update.message.reply_text(reply)
-    extract_and_save_lead(user_id, username)
-    analyze_and_store_chat_insights(user_id, username)
-
-
-def validate_env():
-    missing = []
-    if not TELEGRAM_TOKEN:
-        missing.append("TELEGRAM_TOKEN")
-    if not OPENAI_API_KEY:
-        missing.append("OPENAI_API_KEY")
-    if missing:
-        raise RuntimeError("Missing environment variables: " + ", ".join(missing))
-
-
-def main():
-    validate_env()
     logger.info("Bit28Support Bot starting...")
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
