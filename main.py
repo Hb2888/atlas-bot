@@ -56,13 +56,19 @@ WHAT IS BIT28:
 
 Keep it short first. Example opening:
 
-"Bit28 is a <b>private investment club</b> where a team of professional traders manages your capital for you. 💼
+"Bit28 is a <b>private investment club</b> where a team of professional traders actively manages your capital. 💼
 
-Your money stays in your own account at <b>one of the world's largest regulated brokers</b> - licensed in multiple jurisdictions worldwide. We only have trading access, never withdrawal access.
+Your money stays in your own personal account at <b>one of the world's largest regulated brokers</b> - licensed across multiple jurisdictions. We only have trading access, <b>never</b> withdrawal access.
 
 <b>No profit = no fee. Ever.</b>
 
-And the interesting part: every member can also build their own mini fund manager network and earn commissions on the profits of their entire team. Want me to explain how it works?"
+There are actually two ways to benefit from Bit28:
+
+📈 <b>As an investor</b> - your capital grows while professional traders do the work.
+
+💰 <b>As an agent</b> - you build your own network, earn commissions on the profits of everyone in your team - up to 5 levels deep. Every member essentially becomes a mini fund manager.
+
+Want me to explain the investment side, the agent side, or both?"
 
 Full details - share piece by piece when asked, never all at once:
 
@@ -693,14 +699,29 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_commission_image(update, context)
 
     reply = chat_with_openai(user_id, message)
-    await update.message.reply_text(reply, parse_mode="HTML")
+    try:
+        await update.message.reply_text(reply, parse_mode="HTML")
+    except Exception:
+        # Fallback: strip HTML tags and send as plain text
+        import re
+        plain = re.sub(r'<[^>]+>', '', reply)
+        await update.message.reply_text(plain)
 
-    # Only extract lead data if conversation suggests agent registration
+    # Extract lead data: always after 4+ messages, or immediately if we already have a lead ID
+    convo_len = len(conversations.get(user_id, []))
+    has_existing_lead = bool(agent_lead_data.get(user_id, {}).get("id"))
     agent_keywords = ["agent", "register", "registri", "provision", "commission", "referral",
-                      "empfehlen", "partner", "join", "become", "werden", "verdien", "earn"]
-    if any(kw in msg_lower for kw in agent_keywords) or agent_lead_data.get(user_id, {}).get("id"):
+                      "empfehlen", "partner", "join", "become", "werden", "verdien", "earn",
+                      "anmeld", "name", "email", "vantage", "user id", "user-id", "einladung",
+                      "referred", "empfohlen", "wie viele", "how many", "einzahlung", "deposit"]
+    should_extract = (
+        has_existing_lead or
+        any(kw in msg_lower for kw in agent_keywords) or
+        convo_len >= 4
+    )
+    if should_extract:
         extract_and_save_lead(user_id, username)
-    if len(conversations.get(user_id, [])) % 6 == 0:
+    if convo_len % 6 == 0:
         analyze_and_save_chat(user_id, username)
 
 
@@ -720,7 +741,12 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     conversations.setdefault(user_id, []).append({"role": "user", "content": "[sent a screenshot]"})
     conversations[user_id].append({"role": "assistant", "content": reply})
-    await update.message.reply_text(reply, parse_mode="HTML")
+    try:
+        await update.message.reply_text(reply, parse_mode="HTML")
+    except Exception:
+        import re
+        plain = re.sub(r'<[^>]+>', '', reply)
+        await update.message.reply_text(plain)
     extract_and_save_lead(user_id, username)
 
 
@@ -741,7 +767,12 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     reply = chat_with_openai(user_id, transcribed)
-    await update.message.reply_text(reply, parse_mode="HTML")
+    try:
+        await update.message.reply_text(reply, parse_mode="HTML")
+    except Exception:
+        import re
+        plain = re.sub(r'<[^>]+>', '', reply)
+        await update.message.reply_text(plain)
     extract_and_save_lead(user_id, username)
 
 
