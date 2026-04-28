@@ -86,8 +86,8 @@ def friendly_retry_message(original_message: str = "") -> str:
     german_markers = ["was", "wie", "warum", "nicht", "danke", "hallo", "konto", "einzahlung", "auszahlung"]
     lower = (original_message or "").lower()
     if any(marker in lower for marker in german_markers):
-        return "Sorry, gerade ist zu viel los. Bitte sende deine Nachricht in ein paar Sekunden nochmal."
-    return "Sorry, too many requests are coming in right now. Please send your message again in a few seconds."
+        return "Sorry, ich konnte die Antwort gerade nicht sauber erstellen. Ich versuche es gleich nochmal, sobald du deine nächste Nachricht sendest."
+    return "Sorry, I could not create a clean reply just now. I will try again when you send your next message."
 
 
 def post_json_with_retries(
@@ -183,6 +183,17 @@ def parse_json_object(raw: str, *, label: str = "json_parse") -> Optional[dict[s
 conversations = {}
 agent_lead_data = {}
 user_locks: dict = {}  # Per-user asyncio locks to prevent race conditions
+
+# Debounce / queue system:
+# When a user sends multiple short messages quickly, we collect them for a moment
+# and process them as ONE user input. This prevents duplicate OpenAI calls,
+# race conditions in guided setup flows, and rate-limit-like failures.
+TEXT_DEBOUNCE_SECONDS = float(os.environ.get("TEXT_DEBOUNCE_SECONDS", "1.8"))
+BACKGROUND_DEBOUNCE_SECONDS = float(os.environ.get("BACKGROUND_DEBOUNCE_SECONDS", "8.0"))
+pending_text_buffers: dict[str, list[str]] = {}
+pending_text_meta: dict[str, dict[str, str]] = {}
+pending_text_tasks: dict[str, asyncio.Task] = {}
+pending_background_tasks: dict[str, asyncio.Task] = {}
 
 def get_user_lock(user_id: str) -> asyncio.Lock:
     """Get or create an asyncio.Lock for a specific user. Must be called from async context."""
@@ -913,15 +924,309 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(welcome, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
 
 
+# ---------------- Guided flow state machine ----------------
+# Guided setup/agent modes do NOT call OpenAI on every short answer.
+# Short replies like "yes", "done", "USD" are handled deterministically here.
+
+YES_WORDS = {"yes", "y", "ja", "j", "ok", "okay", "klar", "ready", "bereit", "start", "go", "weiter", "done", "fertig", "erledigt", "gemacht", "habe ich", "hab ich"}
+NO_WORDS = {"no", "n", "nein", "nope", "nicht", "habe ich nicht", "hab ich nicht"}
+DONE_WORDS = {"done", "fertig", "erledigt", "gemacht", "ja", "yes", "ok", "okay", "weiter", "habe ich", "hab ich"}
+
+def normalize_answer(text: str) -> str:
+    return (text or "").strip().lower()
+
+def is_yes(text: str) -> bool:
+    t = normalize_answer(text)
+    return any(w == t or w in t for w in YES_WORDS)
+
+def is_no(text: str) -> bool:
+    t = normalize_answer(text)
+    return any(w == t or w in t for w in NO_WORDS)
+
+def is_done(text: str) -> bool:
+    t = normalize_answer(text)
+    return any(w == t or w in t for w in DONE_WORDS)
+
+def detect_currency(text: str) -> str:
+    t = normalize_answer(text).replace(" ", "")
+    if "usdt" in t:
+        return "USDT"
+    if "usdc" in t:
+        return "USDC"
+    if "usd" in t or "$" in t:
+        return "USD"
+    if "eur" in t or "euro" in t or "€" in t:
+        return "EUR"
+    if "gbp" in t or "pound" in t or "pfund" in t or "£" in t:
+        return "GBP"
+    return text.strip().upper()[:12] if text.strip() else ""
+
+def is_usd_path(currency: str) -> bool:
+    return currency.upper() in {"USD", "USDT", "USDC"}
+
+def wants_investor_setup(text: str) -> bool:
+    t = normalize_answer(text)
+    terms = ["setup", "set up", "einrichten", "account erstellen", "konto erstellen", "konto eröffnen", "registrieren", "registration", "anmelden", "starten", "investieren", "deposit", "einzahlen", "pamm", "onboarding", "guide", "durchleitung", "schritt für schritt", "step by step", "loslegen"]
+    return any(x in t for x in terms)
+
+def wants_agent_setup(text: str) -> bool:
+    t = normalize_answer(text)
+    terms = ["agent werden", "agent registrieren", "agent registration", "become agent", "partner werden", "referral", "provision", "commission", "introducing broker", "agent anmelden", "als agent"]
+    return any(x in t for x in terms)
+
+def set_pending_flow_from_reply(context: ContextTypes.DEFAULT_TYPE, reply: str) -> None:
+    r = (reply or "").lower()
+    if "ready to go through it together" in r or "getting set up is straightforward" in r or "4 simple steps" in r:
+        context.user_data["pending_flow"] = "investor"
+    if "want me to get you registered now" in r or "becoming an agent is 4 steps" in r:
+        context.user_data["pending_flow"] = "agent"
+
+async def send_flow(update: Update, text: str) -> None:
+    await send_text_safely(update, text, parse_mode="HTML")
+
+async def start_investor_flow(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data["flow"] = "investor"
+    context.user_data["investor_step"] = "currency"
+    context.user_data["investor_data"] = {}
+    context.user_data["pending_flow"] = None
+    await send_flow(update, "Quick question first - will you be depositing in <b>USD, USDT, or USDC</b>?\n\nOr in another currency like <b>EUR or GBP</b>?")
+
+async def start_agent_flow(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data["flow"] = "agent"
+    context.user_data["agent_step"] = "partners_90d"
+    context.user_data["agent_data"] = {}
+    context.user_data["pending_flow"] = None
+    await send_flow(update, "Perfect. Let’s register you as an agent. 💰\n\nFirst question: How many partners do you think you can bring in over the next <b>90 days</b>?")
+
+async def handle_pending_flow_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE, message: str) -> bool:
+    pending = context.user_data.get("pending_flow")
+    if not pending:
+        return False
+    if is_no(message):
+        context.user_data["pending_flow"] = None
+        await send_flow(update, "No problem. What would you like to know instead?")
+        return True
+    if is_yes(message) or len(message.strip()) <= 20:
+        if pending == "investor":
+            await start_investor_flow(update, context)
+            return True
+        if pending == "agent":
+            await start_agent_flow(update, context)
+            return True
+    return False
+
+async def handle_investor_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str, username: str, message: str) -> bool:
+    if context.user_data.get("flow") != "investor":
+        return False
+    step = context.user_data.get("investor_step")
+    data = context.user_data.setdefault("investor_data", {})
+    msg = message.strip()
+    if normalize_answer(msg) in {"cancel", "stop", "abbrechen", "beenden"}:
+        context.user_data.pop("flow", None); context.user_data.pop("investor_step", None)
+        await send_flow(update, "Okay, I stopped the setup guide. You can restart anytime by writing <b>setup</b>.")
+        return True
+    if step == "currency":
+        currency = detect_currency(msg); data["currency"] = currency; data["path"] = "usd" if is_usd_path(currency) else "local"
+        context.user_data["investor_step"] = "has_account"
+        await send_flow(update, f"Got it: <b>{currency}</b>.\n\nDo you already have an account with our regulated broker partner?")
+        return True
+    if step == "has_account":
+        if is_yes(msg):
+            context.user_data["investor_step"] = "kyc_done"
+            await send_flow(update, "Great. Now we need to make sure your identity is verified.\n\nIn your dashboard you should see <b>Verify Now</b>. Upload your photo ID and proof of address.\n\nTell me when that is done, or send a screenshot if you get stuck.")
+            return True
+        if is_no(msg):
+            context.user_data["investor_step"] = "has_referral_link"
+            await send_flow(update, "No problem. You need the referral link from the person who invited you.\n\nDo you have that link?")
+            return True
+        await send_flow(update, "Please answer with <b>yes</b> or <b>no</b>. Do you already have an account?")
+        return True
+    if step == "has_referral_link":
+        if is_no(msg):
+            await send_flow(update, "Then please contact the person who invited you.\n\nIf you lost the contact, message us here: https://t.me/bit28_io")
+            return True
+        context.user_data["investor_step"] = "registration_done"
+        await send_flow(update, "Open that referral link and register.\n\nYou need your country, email, and password. Account type: <b>Individual</b>.\n\nAfter that, confirm your email. Check spam too. Tell me when registration is done.")
+        return True
+    if step == "registration_done":
+        if not is_done(msg):
+            await send_flow(update, "No worries. Finish the registration first, then write <b>done</b>.")
+            return True
+        context.user_data["investor_step"] = "kyc_done"
+        await send_flow(update, "Now verify your identity.\n\nClick <b>Verify Now</b>, upload your photo ID and proof of address.\n\nTell me when KYC is done.")
+        return True
+    if step == "kyc_done":
+        if not is_done(msg):
+            await send_flow(update, "Finish the verification first. If something is unclear, send me a screenshot.")
+            return True
+        if data.get("path") == "usd":
+            context.user_data["investor_step"] = "open_pamm_done"
+            await send_flow(update, "Now open your PAMM investor account.\n\nGo to: <b>Open Account &gt; Live &gt; MT5 &gt; PAMM &gt; USD</b>.\n\nIt can take up to 1 hour to activate. Tell me when the PAMM account appears.")
+        else:
+            context.user_data["investor_step"] = "open_stp_done"
+            await send_flow(update, "Because you deposit in a non-USD currency, first open a Standard STP account in your local currency.\n\nGo to: <b>Open Account &gt; Live &gt; MT5 &gt; Standard STP &gt; your currency</b>.\n\nTell me when it is open.")
+        return True
+    if step == "open_stp_done":
+        if not is_done(msg):
+            await send_flow(update, "Open the Standard STP account first, then write <b>done</b>.")
+            return True
+        context.user_data["investor_step"] = "deposit_stp_done"
+        await send_flow(update, "Now deposit into that STP account using your preferred method.\n\nTell me when the funds show in the account.")
+        return True
+    if step == "deposit_stp_done":
+        if not is_done(msg):
+            await send_flow(update, "Wait until the funds show in the STP account. Then write <b>done</b>.")
+            return True
+        context.user_data["investor_step"] = "open_pamm_usd_done"
+        await send_flow(update, "Now open a second account: <b>PAMM in USD</b>.\n\nGo to: <b>Open Account &gt; Live &gt; MT5 &gt; PAMM &gt; USD</b>.\n\nWait up to 1 hour and tell me when it appears.")
+        return True
+    if step == "open_pamm_usd_done":
+        if not is_done(msg):
+            await send_flow(update, "Open the PAMM USD account first, then write <b>done</b>.")
+            return True
+        context.user_data["investor_step"] = "transfer_done"
+        await send_flow(update, "Now transfer internally.\n\nGo to: <b>Funds &gt; Transfer</b> and move funds from your STP account to your <b>PAMM USD</b> account. The broker converts automatically.\n\nTell me when the transfer is done.")
+        return True
+    if step == "transfer_done":
+        if not is_done(msg):
+            await send_flow(update, "Complete the internal transfer first, then write <b>done</b>.")
+            return True
+        context.user_data["investor_step"] = "has_pamm_offer"
+        await send_flow(update, "Almost there. Now you need the <b>PAMM offer link</b> from the person who invited you.\n\nDo you have it?")
+        return True
+    if step == "open_pamm_done":
+        if not is_done(msg):
+            await send_flow(update, "Wait until the PAMM account appears. Then write <b>done</b>.")
+            return True
+        context.user_data["investor_step"] = "deposit_done"
+        await send_flow(update, "Now deposit your funds.\n\nGo to: <b>Funds &gt; Deposit</b>, select your PAMM account, enter the amount, and choose your payment method. Minimum is <b>100 USD</b>.\n\nTell me once the funds show in your PAMM account.")
+        return True
+    if step == "deposit_done":
+        if not is_done(msg):
+            await send_flow(update, "Wait until the funds show in your PAMM account. Then write <b>done</b>.")
+            return True
+        context.user_data["investor_step"] = "has_pamm_offer"
+        await send_flow(update, "Almost there. Now you need the <b>PAMM offer link</b> from the person who invited you.\n\nDo you have it?")
+        return True
+    if step == "has_pamm_offer":
+        if is_no(msg):
+            await send_flow(update, "Ask the person who invited you for the PAMM offer link.\n\nIf you lost the contact, message us here: https://t.me/bit28_io")
+            return True
+        context.user_data["investor_step"] = "subscribe_done"
+        await send_flow(update, "Open the PAMM offer link.\n\nYour server, login number, and MT5 password were sent by email when you opened the account. Check inbox and spam.\n\nFill in the form and click <b>Subscribe</b>. Confirmation can take up to 24 hours. Tell me when you submitted it.")
+        return True
+    if step == "subscribe_done":
+        if not is_done(msg):
+            await send_flow(update, "Submit the PAMM subscription first. If anything looks unclear, send me a screenshot.")
+            return True
+        context.user_data.pop("flow", None); context.user_data.pop("investor_step", None)
+        await send_flow(update, "You are all set. 🎉\n\nYou can track performance and manage withdrawals here:\n\nhttps://pamm16.vantagemarkets.com/app/auth/investor\n\nWelcome to Bit28.")
+        return True
+    return False
+
+async def handle_agent_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str, username: str, message: str) -> bool:
+    if context.user_data.get("flow") != "agent":
+        return False
+    step = context.user_data.get("agent_step")
+    data = context.user_data.setdefault("agent_data", {})
+    msg = message.strip()
+    if normalize_answer(msg) in {"cancel", "stop", "abbrechen", "beenden"}:
+        context.user_data.pop("flow", None); context.user_data.pop("agent_step", None)
+        await send_flow(update, "Okay, I stopped the agent registration. You can restart anytime by writing <b>agent</b>.")
+        return True
+    if step == "partners_90d":
+        nums = re.findall(r"\d+(?:[\.,]\d+)?", msg)
+        if not nums:
+            await send_flow(update, "Please send only a number.\n\nHow many partners can you bring in over the next <b>90 days</b>?")
+            return True
+        partners = float(nums[0].replace(",", ".")); data["estimated_users_3months"] = partners
+        if partners >= 50:
+            context.user_data.pop("flow", None); context.user_data.pop("agent_step", None)
+            await send_flow(update, "That sounds like a larger network. For this we use the <b>Leader program</b>.\n\nPlease contact management directly here: https://t.me/bit28_io")
+            return True
+        context.user_data["agent_step"] = "avg_deposit"
+        await send_flow(update, "Good. What would you estimate their average deposit in <b>USD</b>?")
+        return True
+    if step == "avg_deposit":
+        nums = re.findall(r"\d+(?:[\.,]\d+)?", msg.replace("$", ""))
+        if not nums:
+            await send_flow(update, "Please send the estimated average deposit as a number in USD.")
+            return True
+        data["estimated_avg_deposit_usd"] = float(nums[0].replace(",", "."))
+        context.user_data["agent_step"] = "referred_by"
+        await send_flow(update, "Who introduced you to Bit28?")
+        return True
+    if step == "referred_by":
+        data["referred_by"] = msg; context.user_data["agent_step"] = "vantage_user_id"
+        await send_flow(update, "What is your broker User ID?\n\nYou find it in the app under <b>Profile</b>, below your username. If you cannot find it, send your broker email instead.")
+        return True
+    if step == "vantage_user_id":
+        if "@" in msg:
+            data["email"] = msg; data["vantage_user_id"] = None; context.user_data["agent_step"] = "full_name"
+            await send_flow(update, "Got it. And your full name?")
+        else:
+            data["vantage_user_id"] = msg; context.user_data["agent_step"] = "email"
+            await send_flow(update, "What is your email address used with the broker?")
+        return True
+    if step == "email":
+        if "@" not in msg:
+            await send_flow(update, "Please send a valid email address.")
+            return True
+        data["email"] = msg; context.user_data["agent_step"] = "full_name"
+        await send_flow(update, "And your full name?")
+        return True
+    if step == "full_name":
+        data["name"] = msg; context.user_data["agent_step"] = "confirm"
+        summary = ("Here is what I have:\n\n" f"Name: <b>{data.get('name')}</b>\n" f"Email: <b>{data.get('email')}</b>\n" f"User ID: <b>{data.get('vantage_user_id') or 'not provided'}</b>\n" f"Introduced by: <b>{data.get('referred_by')}</b>\n" f"Partners in 90 days: <b>{int(data.get('estimated_users_3months', 0))}</b>\n" f"Average deposit: <b>{data.get('estimated_avg_deposit_usd')} USD</b>\n\n" "Is everything correct?")
+        await send_flow(update, summary)
+        return True
+    if step == "confirm":
+        if is_no(msg):
+            context.user_data["agent_step"] = "partners_90d"; context.user_data["agent_data"] = {}
+            await send_flow(update, "No problem. Let’s restart the agent registration.\n\nHow many partners can you bring in over the next <b>90 days</b>?")
+            return True
+        if not is_yes(msg):
+            await send_flow(update, "Please answer with <b>yes</b> if everything is correct, or <b>no</b> if we should restart.")
+            return True
+        lead = dict(data); lead["telegram_username"] = username; lead["telegram_user_id"] = user_id; lead["status"] = "new"
+        saved_id = await asyncio.to_thread(save_lead, lead, agent_lead_data.get(user_id, {}).get("id"))
+        agent_lead_data[user_id] = {"id": saved_id, "complete": True}
+        context.user_data.pop("flow", None); context.user_data.pop("agent_step", None)
+        await send_flow(update, "Done. ✅\n\nWithin 48 hours you should receive an email that your Introducing Broker profile is active.\n\nYour referral link will then appear under <b>Profile &gt; IB</b> in the app. Commissions arrive every Monday. Welcome to the team.")
+        return True
+    return False
+
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle text messages immediately, except deterministic guided flows."""
     user = update.effective_user
     user_id = str(user.id)
     username = user.username or ""
-    message = update.message.text or ""
-    msg_lower = message.lower()
+    message = (update.message.text or "").strip()
+    if not message:
+        return
 
-    # Keep GPT conversation order stable per user.
-    # Heavy post-processing is scheduled outside this lock.
+    handled = await handle_investor_flow(update, context, user_id, username, message)
+    if handled:
+        return
+    handled = await handle_agent_flow(update, context, user_id, username, message)
+    if handled:
+        return
+    handled = await handle_pending_flow_confirmation(update, context, message)
+    if handled:
+        return
+
+    if wants_agent_setup(message):
+        await send_flow(update, "Becoming an agent is 4 steps:\n\n1️⃣ Be an active Bit28 member with min. 100 USD invested\n2️⃣ Register as agent here\n3️⃣ Share your personal referral link\n4️⃣ Receive commissions every Monday 💰\n\nWant me to get you registered now?")
+        context.user_data["pending_flow"] = "agent"
+        return
+
+    if wants_investor_setup(message):
+        await send_flow(update, "Getting set up is straightforward - 4 simple steps:\n\n1️⃣ Create your account\n2️⃣ Verify your identity\n3️⃣ Set up your PAMM investment account\n4️⃣ Deposit and connect to our fund\n\nTakes about 10-15 minutes. Ready to go through it together? 👇")
+        context.user_data["pending_flow"] = "investor"
+        return
+
+    msg_lower = message.lower()
     async with get_user_lock(user_id):
         await _handle_text_inner(update, context, user_id, username, message, msg_lower)
 
@@ -962,12 +1267,34 @@ async def run_background_tasks(user_id: str, username: str, msg_lower: str) -> N
 
 
 def schedule_background_tasks(user_id: str, username: str, msg_lower: str) -> None:
-    """Fire-and-forget background work. Never block Telegram message handling."""
-    task = asyncio.create_task(run_background_tasks(user_id, username, msg_lower))
+    """Debounced fire-and-forget background work.
+
+    Background OpenAI calls were another source of pressure during fast guided flows.
+    We therefore wait a few seconds after the user's last message before CRM analysis.
+    If the user keeps replying, the background timer resets.
+    """
+    existing_task = pending_background_tasks.get(user_id)
+    if existing_task and not existing_task.done():
+        existing_task.cancel()
+
+    async def _delayed_background() -> None:
+        try:
+            await asyncio.sleep(BACKGROUND_DEBOUNCE_SECONDS)
+            await run_background_tasks(user_id, username, msg_lower)
+        except asyncio.CancelledError:
+            raise
+        finally:
+            if pending_background_tasks.get(user_id) is task:
+                pending_background_tasks.pop(user_id, None)
+
+    task = asyncio.create_task(_delayed_background())
+    pending_background_tasks[user_id] = task
 
     def _log_result(done_task: asyncio.Task) -> None:
         try:
             done_task.result()
+        except asyncio.CancelledError:
+            pass
         except Exception as e:
             logger.error(f"background task crashed for {user_id}: {e}")
 
@@ -988,6 +1315,7 @@ async def _handle_text_inner(update: Update, context: ContextTypes.DEFAULT_TYPE,
         await send_commission_image(update, context)
 
     reply = await chat_with_openai(user_id, message)
+    set_pending_flow_from_reply(context, reply)
     await send_text_safely(update, reply, parse_mode="HTML")
 
     # Slow extraction/summary tasks happen after the reply and outside the critical path.
