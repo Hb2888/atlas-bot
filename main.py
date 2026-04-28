@@ -5,6 +5,7 @@ import requests
 import tempfile
 import base64
 import json
+from aiohttp import web
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -25,29 +26,11 @@ def sanitize_html(text: str) -> str:
 
 conversations = {}
 agent_lead_data = {}
-
-# Stability controls
-# ------------------
-# Per-user queues prevent one fast user from creating overlapping OpenAI calls.
-# User A can be queued without blocking User B/C.
-user_processing: dict[str, bool] = {}
-user_pending_messages: dict[str, list[str]] = {}
-
-# Limit total simultaneous OpenAI calls so many users do not overload the bot/API at once.
-OPENAI_MAX_CONCURRENT = int(os.environ.get("OPENAI_MAX_CONCURRENT", "5"))
-openai_semaphore = asyncio.Semaphore(OPENAI_MAX_CONCURRENT)
-
-# Lead extraction/chat summary are less urgent. Keep them lower so they do not steal capacity from live replies.
-BACKGROUND_MAX_CONCURRENT = int(os.environ.get("BACKGROUND_MAX_CONCURRENT", "2"))
-background_semaphore = asyncio.Semaphore(BACKGROUND_MAX_CONCURRENT)
-
-# Safety limit per user. If someone spams 100 messages during one answer, keep only the last few.
-MAX_PENDING_MESSAGES_PER_USER = int(os.environ.get("MAX_PENDING_MESSAGES_PER_USER", "10"))
-
-# Old lock helper kept for compatibility for photo/voice handlers.
-user_locks: dict = {}
+user_locks: dict = {}  # Per-user asyncio locks to prevent race conditions
+user_pending: dict = {}  # Stores latest pending message per user while bot is processing
 
 def get_user_lock(user_id: str) -> asyncio.Lock:
+    """Get or create an asyncio.Lock for a specific user. Must be called from async context."""
     if user_id not in user_locks:
         user_locks[user_id] = asyncio.Lock()
     return user_locks[user_id]
@@ -632,54 +615,45 @@ async def chat_with_openai(user_id: str, message: str) -> str:
     if len(conversations[user_id]) > 40:
         conversations[user_id] = conversations[user_id][-40:]
 
-    msgs = [{"role": "system", "content": SYSTEM_PROMPT}] + conversations[user_id]
-
-    def _call():
-        return requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json={
-                "model": "gpt-4o",
-                "messages": msgs,
-                "max_tokens": 800,
-                "temperature": 0.65
-            },
-            timeout=40
-        )
-
     try:
-        async with openai_semaphore:
-            loop = asyncio.get_event_loop()
-            resp = await loop.run_in_executor(None, _call)
-
-        if resp.status_code != 200:
-            logger.error(f"OpenAI HTTP {resp.status_code} for user {user_id}: {resp.text[:800]}")
-            # Do not blame the user or say they wrote too fast. This is a backend/API issue.
-            return "Sorry, I could not create a clean answer right now. Please send your last message again."
-
-        try:
-            data = resp.json()
-        except Exception:
-            logger.error(f"OpenAI non-JSON response for user {user_id}: {resp.text[:800]}")
-            return "Sorry, I could not read the AI response properly. Please send your last message again."
-
-        if not data.get("choices"):
-            logger.error(f"OpenAI missing choices for user {user_id}: {data}")
-            return "Sorry, I could not create a clean answer right now. Please send your last message again."
-
-        reply = data["choices"][0].get("message", {}).get("content", "").strip()
-        if not reply:
-            logger.error(f"OpenAI empty reply for user {user_id}: {data}")
-            return "Sorry, I could not create a clean answer right now. Please send your last message again."
-
+        msgs = [{"role": "system", "content": SYSTEM_PROMPT}] + conversations[user_id]
+        loop = asyncio.get_event_loop()
+        def _call():
+            return requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": "gpt-4o",
+                    "messages": msgs,
+                    "max_tokens": 800,
+                    "temperature": 0.65
+                },
+                timeout=40
+            )
+        resp = await loop.run_in_executor(None, _call)
+        response_json = resp.json()
+        logger.info(f"OpenAI HTTP {resp.status_code}, keys={list(response_json.keys())}")
+        if resp.status_code != 200 or "choices" not in response_json:
+            logger.error(f"OpenAI bad response {resp.status_code}: {str(response_json)[:400]}")
+            # If rate limited, wait and retry once
+            if resp.status_code == 429 or response_json.get("error", {}).get("type") == "requests_rate_limit_exceeded":
+                import time
+                logger.info("Rate limited - waiting 3s and retrying...")
+                await asyncio.sleep(3)
+                retry_resp = await loop.run_in_executor(None, _call)
+                response_json = retry_resp.json()
+                if "choices" not in response_json:
+                    logger.error(f"Retry also failed: {str(response_json)[:400]}")
+                    return "Something went wrong on my end. Please try again in a moment, or reach out to us directly at https://t.me/bit28_io and we will help you right away."
+            else:
+                return "Something went wrong on my end. Please try again in a moment, or reach out to us directly at https://t.me/bit28_io and we will help you right away."
+        reply = response_json["choices"][0]["message"]["content"]
         conversations[user_id].append({"role": "assistant", "content": reply})
         return reply
-
-    except requests.Timeout as e:
-        logger.error(f"OpenAI timeout for user {user_id}: {e}")
-        return "Sorry, the answer took too long to generate. Please send your last message again."
     except Exception as e:
-        logger.error(f"OpenAI error for user {user_id}: {e}")
+        import traceback
+        logger.error(f"OpenAI error type={type(e).__name__} msg={e}")
+        logger.error(traceback.format_exc())
         return "Something went wrong on my end. Please try again in a moment, or reach out to us directly at https://t.me/bit28_io and we will help you right away."
 
 
@@ -749,92 +723,6 @@ async def send_commission_image(update: Update, context: ContextTypes.DEFAULT_TY
         logger.error(f"Failed to send commission image: {e}")
 
 
-
-async def send_text_safely(update: Update, text: str, parse_mode: str = "HTML"):
-    """Send Telegram text safely, with automatic split and plain-text fallback."""
-    import re
-
-    if not text:
-        return
-
-    chunks = []
-    max_len = 3500
-    remaining = text
-    while len(remaining) > max_len:
-        split_at = remaining.rfind("\n\n", 0, max_len)
-        if split_at == -1:
-            split_at = remaining.rfind("\n", 0, max_len)
-        if split_at == -1:
-            split_at = max_len
-        chunks.append(remaining[:split_at].strip())
-        remaining = remaining[split_at:].strip()
-    if remaining:
-        chunks.append(remaining)
-
-    for chunk in chunks:
-        try:
-            await update.message.reply_text(sanitize_html(chunk), parse_mode=parse_mode)
-        except Exception as e:
-            logger.error(f"Telegram HTML send failed, using plain text: {e}")
-            plain = re.sub(r"<[^>]+>", "", chunk)
-            await update.message.reply_text(plain)
-
-
-async def run_background_after_reply(user_id: str, username: str, msg_lower: str):
-    """Run CRM/lead/chat analysis after replying, so the user is not blocked."""
-    try:
-        convo_len = len(conversations.get(user_id, []))
-        has_existing_lead = bool(agent_lead_data.get(user_id, {}).get("id"))
-        agent_keywords = ["agent", "register", "registri", "provision", "commission", "referral",
-                          "empfehlen", "partner", "join", "become", "werden", "verdien", "earn",
-                          "anmeld", "name", "email", "vantage", "user id", "user-id", "einladung",
-                          "referred", "empfohlen", "wie viele", "how many", "einzahlung", "deposit"]
-        should_extract = (
-            has_existing_lead or
-            any(kw in msg_lower for kw in agent_keywords) or
-            convo_len >= 4
-        )
-
-        async with background_semaphore:
-            loop = asyncio.get_event_loop()
-            if should_extract:
-                await loop.run_in_executor(None, extract_and_save_lead, user_id, username)
-            if convo_len % 6 == 0:
-                await loop.run_in_executor(None, analyze_and_save_chat, user_id, username)
-    except Exception as e:
-        logger.error(f"background_after_reply error for user {user_id}: {e}")
-
-
-async def process_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str, username: str, message: str):
-    """Actual text processing. Called by the per-user queue worker."""
-    msg_lower = message.lower()
-    await _handle_text_inner(update, context, user_id, username, message, msg_lower)
-
-
-async def drain_user_text_queue(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str, username: str, first_message: str):
-    """Process one user's messages sequentially while other users remain concurrent."""
-    current_message = first_message
-    try:
-        while current_message:
-            await process_text_message(update, context, user_id, username, current_message)
-
-            # Collect all messages this same user sent while we were processing.
-            pending = user_pending_messages.pop(user_id, [])
-            if pending:
-                current_message = "\n".join(pending[-MAX_PENDING_MESSAGES_PER_USER:])
-                logger.info(f"Processing {len(pending)} queued message(s) for user {user_id} as one block")
-            else:
-                current_message = None
-    finally:
-        user_processing[user_id] = False
-
-        # Race safety: if a message arrived exactly as we were finishing, restart drain.
-        pending = user_pending_messages.pop(user_id, [])
-        if pending:
-            user_processing[user_id] = True
-            combined = "\n".join(pending[-MAX_PENDING_MESSAGES_PER_USER:])
-            asyncio.create_task(drain_user_text_queue(update, context, user_id, username, combined))
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("Visit Bit28.io", url="https://bit28.io")]]
     welcome = (
@@ -850,23 +738,24 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = str(user.id)
     username = user.username or ""
-    message = update.message.text or ""
+    message = update.message.text
+    msg_lower = message.lower()
 
-    # Per-user queue:
-    # If the same user writes while their previous message is still being processed,
-    # do not send an error and do not create a second overlapping OpenAI request.
-    # Just store the message and process it immediately after the current answer.
-    if user_processing.get(user_id):
-        pending = user_pending_messages.setdefault(user_id, [])
-        pending.append(message)
-        if len(pending) > MAX_PENDING_MESSAGES_PER_USER:
-            user_pending_messages[user_id] = pending[-MAX_PENDING_MESSAGES_PER_USER:]
-        logger.info(f"Queued fast message for user {user_id}. Pending={len(user_pending_messages[user_id])}")
+    lock = get_user_lock(user_id)
+
+    if lock.locked():
+        # Bot is busy processing a previous message — store latest message and return
+        user_pending[user_id] = (update, context, message, msg_lower)
         return
 
-    user_processing[user_id] = True
-    asyncio.create_task(drain_user_text_queue(update, context, user_id, username, message))
-
+    async with lock:
+        # Process current message
+        await _handle_text_inner(update, context, user_id, username, message, msg_lower)
+        # If a new message arrived while we were processing, handle it now
+        while user_id in user_pending:
+            pending = user_pending.pop(user_id)
+            p_update, p_context, p_message, p_msg_lower = pending
+            await _handle_text_inner(p_update, p_context, user_id, username, p_message, p_msg_lower)
 
 async def _handle_text_inner(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str, username: str, message: str, msg_lower: str):
     # Send commission image once at the start of a commission conversation
@@ -882,10 +771,30 @@ async def _handle_text_inner(update: Update, context: ContextTypes.DEFAULT_TYPE,
         await send_commission_image(update, context)
 
     reply = await chat_with_openai(user_id, message)
-    await send_text_safely(update, reply, parse_mode="HTML")
+    try:
+        await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
+    except Exception:
+        # Fallback: strip HTML tags and send as plain text
+        import re
+        plain = re.sub(r'<[^>]+>', '', reply)
+        await update.message.reply_text(plain)
 
-    # Do CRM/lead/chat analysis after replying. Never block the user's next message on this.
-    asyncio.create_task(run_background_after_reply(user_id, username, msg_lower))
+    # Extract lead data: always after 4+ messages, or immediately if we already have a lead ID
+    convo_len = len(conversations.get(user_id, []))
+    has_existing_lead = bool(agent_lead_data.get(user_id, {}).get("id"))
+    agent_keywords = ["agent", "register", "registri", "provision", "commission", "referral",
+                      "empfehlen", "partner", "join", "become", "werden", "verdien", "earn",
+                      "anmeld", "name", "email", "vantage", "user id", "user-id", "einladung",
+                      "referred", "empfohlen", "wie viele", "how many", "einzahlung", "deposit"]
+    should_extract = (
+        has_existing_lead or
+        any(kw in msg_lower for kw in agent_keywords) or
+        convo_len >= 4
+    )
+    if should_extract:
+        extract_and_save_lead(user_id, username)
+    if convo_len % 6 == 0:
+        analyze_and_save_chat(user_id, username)
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -899,11 +808,16 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await file.download_to_drive(tmp.name)
             recent = conversations.get(user_id, [])[-6:]
             context_text = " | ".join([m["content"] for m in recent if isinstance(m["content"], str)])
-            reply = await asyncio.to_thread(analyze_image, tmp.name, context_text)
+            reply = analyze_image(tmp.name, context_text)
         conversations.setdefault(user_id, []).append({"role": "user", "content": "[sent a screenshot]"})
         conversations[user_id].append({"role": "assistant", "content": reply})
-        await send_text_safely(update, reply, parse_mode="HTML")
-        asyncio.create_task(run_background_after_reply(user_id, username, "[photo]"))
+        try:
+            await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
+        except Exception:
+            import re
+            plain = re.sub(r'<[^>]+>', '', reply)
+            await update.message.reply_text(plain)
+        extract_and_save_lead(user_id, username)
 
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -920,31 +834,72 @@ async def _handle_voice_inner(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp:
         await file.download_to_drive(tmp.name)
-        transcribed = await asyncio.to_thread(transcribe_voice, tmp.name)
+        transcribed = transcribe_voice(tmp.name)
 
     if not transcribed:
-        await send_text_safely(update, "Could not transcribe your voice message. Please type your question.", parse_mode="HTML")
+        await update.message.reply_text("Could not transcribe your voice message. Please type your question.", parse_mode="HTML")
         return
 
     reply = await chat_with_openai(user_id, transcribed)
-    await send_text_safely(update, reply, parse_mode="HTML")
-    asyncio.create_task(run_background_after_reply(user_id, username, transcribed.lower()))
+    try:
+        await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
+    except Exception:
+        import re
+        plain = re.sub(r'<[^>]+>', '', reply)
+        await update.message.reply_text(plain)
+    extract_and_save_lead(user_id, username)
 
 
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.error("Unhandled Telegram error", exc_info=context.error)
+async def main():
+    logger.info("Bit28Support Bot starting with webhook...")
 
+    WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "https://cooperative-celebration-production-49f7.up.railway.app")
+    PORT = int(os.environ.get("PORT", 8080))
 
-def main():
-    logger.info("Bit28Support Bot starting...")
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
-    app.add_error_handler(error_handler)
-    app.run_polling(drop_pending_updates=True)
+
+    await app.initialize()
+    await app.bot.set_webhook(
+        url=f"{WEBHOOK_URL}/webhook",
+        drop_pending_updates=True
+    )
+    logger.info(f"Webhook set to {WEBHOOK_URL}/webhook")
+
+    # aiohttp web server to receive webhook updates
+    async def handle_webhook(request):
+        data = await request.json()
+        update = Update.de_json(data, app.bot)
+        await app.process_update(update)
+        return web.Response(text="OK")
+
+    async def handle_health(request):
+        return web.Response(text="OK")
+
+    web_app = web.Application()
+    web_app.router.add_post("/webhook", handle_webhook)
+    web_app.router.add_get("/", handle_health)
+
+    runner = web.AppRunner(web_app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", PORT)
+    await site.start()
+    logger.info(f"Server running on port {PORT}")
+
+    await app.start()
+    logger.info("Bot started. Listening for webhook updates...")
+
+    # Keep running
+    try:
+        await asyncio.Event().wait()
+    finally:
+        await app.stop()
+        await app.shutdown()
+        await runner.cleanup()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
