@@ -5,6 +5,9 @@ import requests
 import tempfile
 import base64
 import json
+import re
+import time
+from typing import Any, Optional
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -17,10 +20,164 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 COMMISSION_IMAGE_URL = "https://base44.app/api/apps/69e5e7aaf26f910c2292c93d/files/mp/public/69e5e7aaf26f910c2292c93d/e2341a810_file_295.jpg"
 
 def sanitize_html(text: str) -> str:
-    """Escape bare & ampersands that are not part of HTML entities, to prevent Telegram parse errors."""
-    import re
-    # Replace & that are not already part of &amp; &lt; &gt; &quot; &#...
+    """Make GPT output safer for Telegram HTML parse mode.
+
+    Telegram is strict with HTML. The most common crash is a bare & character.
+    We keep allowed tags from the prompt, but escape unsafe ampersands.
+    """
+    if not text:
+        return ""
     return re.sub(r'&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)', '&amp;', text)
+
+
+def strip_html_tags(text: str) -> str:
+    """Fallback text if Telegram rejects HTML parsing."""
+    if not text:
+        return ""
+    return re.sub(r"<[^>]+>", "", text)
+
+
+def split_telegram_message(text: str, limit: int = 3900) -> list[str]:
+    """Split long messages before Telegram's 4096 character hard limit."""
+    if not text:
+        return [""]
+    if len(text) <= limit:
+        return [text]
+
+    chunks: list[str] = []
+    current = ""
+    parts = text.split("\n\n")
+
+    for part in parts:
+        candidate = part if not current else current + "\n\n" + part
+        if len(candidate) <= limit:
+            current = candidate
+            continue
+
+        if current:
+            chunks.append(current)
+            current = ""
+
+        while len(part) > limit:
+            chunks.append(part[:limit])
+            part = part[limit:]
+        current = part
+
+    if current:
+        chunks.append(current)
+
+    return chunks
+
+
+async def send_text_safely(update: Update, text: str, parse_mode: str = "HTML") -> None:
+    """Send Telegram text with HTML first, then plain-text fallback."""
+    safe_text = sanitize_html(text)
+    for chunk in split_telegram_message(safe_text):
+        try:
+            await update.message.reply_text(chunk, parse_mode=parse_mode)
+        except Exception as e:
+            logger.warning(f"Telegram HTML send failed, using plain text fallback: {e}")
+            plain = strip_html_tags(chunk)
+            await update.message.reply_text(plain)
+
+
+def friendly_retry_message(original_message: str = "") -> str:
+    """Return a user-facing retry message in a likely matching language."""
+    german_markers = ["was", "wie", "warum", "nicht", "danke", "hallo", "konto", "einzahlung", "auszahlung"]
+    lower = (original_message or "").lower()
+    if any(marker in lower for marker in german_markers):
+        return "Sorry, gerade ist zu viel los. Bitte sende deine Nachricht in ein paar Sekunden nochmal."
+    return "Sorry, too many requests are coming in right now. Please send your message again in a few seconds."
+
+
+def post_json_with_retries(
+    url: str,
+    *,
+    headers: Optional[dict[str, str]] = None,
+    payload: Optional[dict[str, Any]] = None,
+    timeout: int = 30,
+    retries: int = 1,
+    label: str = "request",
+) -> Optional[dict[str, Any]]:
+    """Synchronous JSON POST helper for use inside asyncio.to_thread()."""
+    for attempt in range(retries + 1):
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
+
+            if resp.status_code == 429 and attempt < retries:
+                logger.warning(f"{label}: rate limited, retrying once")
+                time.sleep(1.5 * (attempt + 1))
+                continue
+
+            if resp.status_code < 200 or resp.status_code >= 300:
+                logger.error(f"{label}: HTTP {resp.status_code}: {resp.text[:500]}")
+                return None
+
+            try:
+                return resp.json()
+            except Exception as e:
+                logger.error(f"{label}: invalid JSON response: {e}; body={resp.text[:500]}")
+                return None
+
+        except requests.Timeout:
+            logger.warning(f"{label}: timeout on attempt {attempt + 1}/{retries + 1}")
+            if attempt < retries:
+                time.sleep(1.0 * (attempt + 1))
+                continue
+            return None
+        except Exception as e:
+            logger.error(f"{label}: request error: {e}")
+            return None
+
+    return None
+
+
+def extract_openai_text(data: Optional[dict[str, Any]], *, label: str = "openai") -> Optional[str]:
+    """Safely read choices[0].message.content from an OpenAI chat response."""
+    if not data:
+        return None
+
+    if data.get("error"):
+        logger.error(f"{label}: OpenAI error: {data.get('error')}")
+        return None
+
+    choices = data.get("choices") or []
+    if not choices:
+        logger.error(f"{label}: missing choices in OpenAI response: {str(data)[:500]}")
+        return None
+
+    message = choices[0].get("message") or {}
+    content = message.get("content")
+    if not content:
+        logger.error(f"{label}: empty content in OpenAI response: {str(data)[:500]}")
+        return None
+
+    return content.strip()
+
+
+def parse_json_object(raw: str, *, label: str = "json_parse") -> Optional[dict[str, Any]]:
+    """Parse GPT JSON even if it accidentally wraps it in markdown fences."""
+    if not raw:
+        return None
+
+    cleaned = raw.strip().replace("```json", "").replace("```", "").strip()
+
+    try:
+        return json.loads(cleaned)
+    except Exception:
+        pass
+
+    # Last-resort extraction of the first JSON-looking object.
+    match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except Exception as e:
+            logger.error(f"{label}: extracted JSON parse failed: {e}; raw={raw[:500]}")
+            return None
+
+    logger.error(f"{label}: JSON parse failed; raw={raw[:500]}")
+    return None
 
 
 conversations = {}
@@ -466,58 +623,71 @@ def save_chat_summary(user_id: str, username: str, summary: str, objections: str
 
 
 def analyze_and_save_chat(user_id: str, username: str):
-    """Use GPT to analyze the conversation and extract summary, objections, sentiment."""
+    """Use GPT to analyze the conversation and extract summary, objections, sentiment.
+
+    Runs in a background thread so it never blocks the Telegram reply flow.
+    """
     convo = conversations.get(user_id, [])
     if len(convo) < 4:
         return
+
+    extract_payload = {
+        "model": "gpt-4o",
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are a sales analyst. Analyze the conversation and return ONLY a valid JSON object with these keys: "
+                    "summary (string, 1-2 sentences what the user was interested in), "
+                    "objections (string, list all concerns or objections the user raised, or 'none'), "
+                    "sentiment (string: positive, neutral, skeptical, or negative), "
+                    "follow_up_needed (boolean, true if user showed interest but did not complete registration or onboarding), "
+                    "follow_up_message (string, suggested follow-up message to send to this user, or empty string). "
+                    "No markdown, no explanation, just raw JSON."
+                )
+            },
+            {
+                "role": "user",
+                "content": json.dumps(convo[-40:])
+            }
+        ],
+        "max_tokens": 400,
+        "temperature": 0
+    }
+
     try:
-        extract_payload = {
-            "model": "gpt-4o",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a sales analyst. Analyze the conversation and return ONLY a valid JSON object with these keys: "
-                        "summary (string, 1-2 sentences what the user was interested in), "
-                        "objections (string, list all concerns or objections the user raised, or 'none'), "
-                        "sentiment (string: positive, neutral, skeptical, or negative), "
-                        "follow_up_needed (boolean, true if user showed interest but did not complete registration or onboarding), "
-                        "follow_up_message (string, suggested follow-up message to send to this user, or empty string). "
-                        "No markdown, no explanation, just raw JSON."
-                    )
-                },
-                {
-                    "role": "user",
-                    "content": __import__("json").dumps(convo[-40:])
-                }
-            ],
-            "max_tokens": 400,
-            "temperature": 0
-        }
-        resp = requests.post(
+        data = post_json_with_retries(
             "https://api.openai.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json=extract_payload,
-            timeout=15
+            payload=extract_payload,
+            timeout=20,
+            retries=1,
+            label="analyze_and_save_chat/openai",
         )
-        raw = resp.json()["choices"][0]["message"]["content"].strip()
-        raw = raw.replace("```json", "").replace("```", "").strip()
-        data = __import__("json").loads(raw)
+        raw = extract_openai_text(data, label="analyze_and_save_chat")
+        parsed = parse_json_object(raw or "", label="analyze_and_save_chat")
+        if not parsed:
+            return
+
         save_chat_summary(
             user_id=user_id,
             username=username,
-            summary=data.get("summary", ""),
-            objections=data.get("objections", "none"),
-            sentiment=data.get("sentiment", "neutral"),
-            follow_up_needed=data.get("follow_up_needed", False),
-            follow_up_message=data.get("follow_up_message", "")
+            summary=parsed.get("summary", ""),
+            objections=parsed.get("objections", "none"),
+            sentiment=parsed.get("sentiment", "neutral"),
+            follow_up_needed=bool(parsed.get("follow_up_needed", False)),
+            follow_up_message=parsed.get("follow_up_message", "")
         )
-        logger.info(f"Chat analyzed for {user_id}: sentiment={data.get('sentiment')}, follow_up={data.get('follow_up_needed')}")
+        logger.info(f"Chat analyzed for {user_id}: sentiment={parsed.get('sentiment')}, follow_up={parsed.get('follow_up_needed')}")
     except Exception as e:
         logger.error(f"analyze_and_save_chat error: {e}")
 
 
 def extract_and_save_lead(user_id: str, username: str):
+    """Extract agent registration data and save it.
+
+    Runs in a background thread. Errors are logged but never shown to users.
+    """
     convo = conversations.get(user_id, [])
     if len(convo) < 2:
         return
@@ -526,37 +696,41 @@ def extract_and_save_lead(user_id: str, username: str):
     if existing.get("complete"):
         return
 
+    extract_payload = {
+        "model": "gpt-4o",
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are a data extractor. From the conversation below, extract agent registration data. "
+                    "Return ONLY a valid JSON object with these exact keys: "
+                    "name, email, vantage_user_id, referred_by, estimated_users_3months, estimated_avg_deposit_usd. "
+                    "All values are strings or numbers or null. "
+                    "Extract only what the USER explicitly stated. No markdown, no explanation, just raw JSON."
+                )
+            },
+            {
+                "role": "user",
+                "content": json.dumps(convo[-30:])
+            }
+        ],
+        "max_tokens": 300,
+        "temperature": 0
+    }
+
     try:
-        extract_payload = {
-            "model": "gpt-4o",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a data extractor. From the conversation below, extract agent registration data. "
-                        "Return ONLY a valid JSON object with these exact keys: "
-                        "name, email, vantage_user_id, referred_by, estimated_users_3months, estimated_avg_deposit_usd. "
-                        "All values are strings or numbers or null. "
-                        "Extract only what the USER explicitly stated. No markdown, no explanation, just raw JSON."
-                    )
-                },
-                {
-                    "role": "user",
-                    "content": json.dumps(convo[-30:])
-                }
-            ],
-            "max_tokens": 300,
-            "temperature": 0
-        }
-        resp = requests.post(
+        data = post_json_with_retries(
             "https://api.openai.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json=extract_payload,
-            timeout=15
+            payload=extract_payload,
+            timeout=20,
+            retries=1,
+            label="extract_and_save_lead/openai",
         )
-        raw = resp.json()["choices"][0]["message"]["content"].strip()
-        raw = raw.replace("```json", "").replace("```", "").strip()
-        lead = json.loads(raw)
+        raw = extract_openai_text(data, label="extract_and_save_lead")
+        lead = parse_json_object(raw or "", label="extract_and_save_lead")
+        if not lead:
+            return
 
         lead["telegram_username"] = username
         lead["telegram_user_id"] = user_id
@@ -605,6 +779,7 @@ def extract_and_save_lead(user_id: str, username: str):
 
 
 async def chat_with_openai(user_id: str, message: str) -> str:
+    """Create a GPT reply without crashing on OpenAI errors/rate limits."""
     if user_id not in conversations:
         conversations[user_id] = []
 
@@ -613,28 +788,36 @@ async def chat_with_openai(user_id: str, message: str) -> str:
     if len(conversations[user_id]) > 40:
         conversations[user_id] = conversations[user_id][-40:]
 
+    msgs = [{"role": "system", "content": SYSTEM_PROMPT}] + conversations[user_id]
+    payload = {
+        "model": "gpt-4o",
+        "messages": msgs,
+        "max_tokens": 800,
+        "temperature": 0.65
+    }
+
     try:
-        msgs = [{"role": "system", "content": SYSTEM_PROMPT}] + conversations[user_id]
-        loop = asyncio.get_event_loop()
-        def _call():
-            return requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-                json={
-                    "model": "gpt-4o",
-                    "messages": msgs,
-                    "max_tokens": 800,
-                    "temperature": 0.65
-                },
-                timeout=40
-            )
-        resp = await loop.run_in_executor(None, _call)
-        reply = resp.json()["choices"][0]["message"]["content"]
+        data = await asyncio.to_thread(
+            post_json_with_retries,
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+            payload=payload,
+            timeout=40,
+            retries=1,
+            label="chat_with_openai",
+        )
+        reply = extract_openai_text(data, label="chat_with_openai")
+        if not reply:
+            return friendly_retry_message(message)
+
         conversations[user_id].append({"role": "assistant", "content": reply})
+        if len(conversations[user_id]) > 40:
+            conversations[user_id] = conversations[user_id][-40:]
         return reply
+
     except Exception as e:
         logger.error(f"OpenAI error: {e}")
-        return "Something went wrong on my end. Please try again in a moment, or reach out to us directly at https://t.me/bit28_io and we will help you right away."
+        return friendly_retry_message(message)
 
 
 def transcribe_voice(file_path: str) -> str:
@@ -645,9 +828,19 @@ def transcribe_voice(file_path: str) -> str:
                 headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
                 files={"file": ("voice.ogg", f, "audio/ogg")},
                 data={"model": "whisper-1"},
-                timeout=30
+                timeout=35
             )
-        return resp.json().get("text", "")
+
+        if resp.status_code < 200 or resp.status_code >= 300:
+            logger.error(f"Transcription HTTP {resp.status_code}: {resp.text[:500]}")
+            return ""
+
+        data = resp.json()
+        if data.get("error"):
+            logger.error(f"Transcription OpenAI error: {data.get('error')}")
+            return ""
+
+        return data.get("text", "") or ""
     except Exception as e:
         logger.error(f"Transcription error: {e}")
         return ""
@@ -657,23 +850,29 @@ def analyze_image(image_path: str, context_text: str) -> str:
     try:
         with open(image_path, "rb") as f:
             img_b64 = base64.b64encode(f.read()).decode()
-        resp = requests.post(
+
+        payload = {
+            "model": "gpt-4o",
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": [
+                    {"type": "text", "text": f"The user sent this screenshot. Recent conversation: {context_text}\n\nAnalyze it and tell them exactly what to do next. Be short and specific."},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
+                ]}
+            ],
+            "max_tokens": 350
+        }
+
+        data = post_json_with_retries(
             "https://api.openai.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json={
-                "model": "gpt-4o",
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": [
-                        {"type": "text", "text": f"The user sent this screenshot. Recent conversation: {context_text}\n\nAnalyze it and tell them exactly what to do next. Be short and specific."},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
-                    ]}
-                ],
-                "max_tokens": 350
-            },
-            timeout=30
+            payload=payload,
+            timeout=35,
+            retries=1,
+            label="analyze_image/openai",
         )
-        return resp.json()["choices"][0]["message"]["content"]
+        reply = extract_openai_text(data, label="analyze_image")
+        return reply or "Could not analyze the image. Please describe what you see and I will help."
     except Exception as e:
         logger.error(f"Image analysis error: {e}")
         return "Could not analyze the image. Please describe what you see and I will help."
@@ -718,11 +917,62 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = str(user.id)
     username = user.username or ""
-    message = update.message.text
+    message = update.message.text or ""
     msg_lower = message.lower()
 
+    # Keep GPT conversation order stable per user.
+    # Heavy post-processing is scheduled outside this lock.
     async with get_user_lock(user_id):
         await _handle_text_inner(update, context, user_id, username, message, msg_lower)
+
+
+def should_extract_lead_now(user_id: str, msg_lower: str) -> bool:
+    """Decide whether lead extraction is worth running for this message."""
+    convo_len = len(conversations.get(user_id, []))
+    has_existing_lead = bool(agent_lead_data.get(user_id, {}).get("id"))
+    agent_keywords = [
+        "agent", "register", "registri", "provision", "commission", "referral",
+        "empfehlen", "partner", "join", "become", "werden", "verdien", "earn",
+        "anmeld", "name", "email", "vantage", "user id", "user-id", "einladung",
+        "referred", "empfohlen", "wie viele", "how many", "einzahlung", "deposit"
+    ]
+    return (
+        has_existing_lead or
+        any(kw in msg_lower for kw in agent_keywords) or
+        convo_len >= 4
+    )
+
+
+async def run_background_tasks(user_id: str, username: str, msg_lower: str) -> None:
+    """Run slow CRM/GPT extraction tasks after replying to the user."""
+    try:
+        convo_len = len(conversations.get(user_id, []))
+        tasks = []
+
+        if should_extract_lead_now(user_id, msg_lower):
+            tasks.append(asyncio.to_thread(extract_and_save_lead, user_id, username))
+
+        if convo_len >= 4 and convo_len % 6 == 0:
+            tasks.append(asyncio.to_thread(analyze_and_save_chat, user_id, username))
+
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+    except Exception as e:
+        logger.error(f"background task error for {user_id}: {e}")
+
+
+def schedule_background_tasks(user_id: str, username: str, msg_lower: str) -> None:
+    """Fire-and-forget background work. Never block Telegram message handling."""
+    task = asyncio.create_task(run_background_tasks(user_id, username, msg_lower))
+
+    def _log_result(done_task: asyncio.Task) -> None:
+        try:
+            done_task.result()
+        except Exception as e:
+            logger.error(f"background task crashed for {user_id}: {e}")
+
+    task.add_done_callback(_log_result)
+
 
 async def _handle_text_inner(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str, username: str, message: str, msg_lower: str):
     # Send commission image once at the start of a commission conversation
@@ -738,53 +988,48 @@ async def _handle_text_inner(update: Update, context: ContextTypes.DEFAULT_TYPE,
         await send_commission_image(update, context)
 
     reply = await chat_with_openai(user_id, message)
-    try:
-        await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
-    except Exception:
-        # Fallback: strip HTML tags and send as plain text
-        import re
-        plain = re.sub(r'<[^>]+>', '', reply)
-        await update.message.reply_text(plain)
+    await send_text_safely(update, reply, parse_mode="HTML")
 
-    # Extract lead data: always after 4+ messages, or immediately if we already have a lead ID
-    convo_len = len(conversations.get(user_id, []))
-    has_existing_lead = bool(agent_lead_data.get(user_id, {}).get("id"))
-    agent_keywords = ["agent", "register", "registri", "provision", "commission", "referral",
-                      "empfehlen", "partner", "join", "become", "werden", "verdien", "earn",
-                      "anmeld", "name", "email", "vantage", "user id", "user-id", "einladung",
-                      "referred", "empfohlen", "wie viele", "how many", "einzahlung", "deposit"]
-    should_extract = (
-        has_existing_lead or
-        any(kw in msg_lower for kw in agent_keywords) or
-        convo_len >= 4
-    )
-    if should_extract:
-        extract_and_save_lead(user_id, username)
-    if convo_len % 6 == 0:
-        analyze_and_save_chat(user_id, username)
+    # Slow extraction/summary tasks happen after the reply and outside the critical path.
+    schedule_background_tasks(user_id, username, msg_lower)
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = str(user.id)
     username = user.username or ""
+
     async with get_user_lock(user_id):
-        photo = update.message.photo[-1]
-        file = await context.bot.get_file(photo.file_id)
-        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-            await file.download_to_drive(tmp.name)
-            recent = conversations.get(user_id, [])[-6:]
-            context_text = " | ".join([m["content"] for m in recent if isinstance(m["content"], str)])
-            reply = analyze_image(tmp.name, context_text)
-        conversations.setdefault(user_id, []).append({"role": "user", "content": "[sent a screenshot]"})
-        conversations[user_id].append({"role": "assistant", "content": reply})
+        tmp_name = None
         try:
-            await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
-        except Exception:
-            import re
-            plain = re.sub(r'<[^>]+>', '', reply)
-            await update.message.reply_text(plain)
-        extract_and_save_lead(user_id, username)
+            photo = update.message.photo[-1]
+            file = await context.bot.get_file(photo.file_id)
+
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                tmp_name = tmp.name
+                await file.download_to_drive(tmp.name)
+
+            recent = conversations.get(user_id, [])[-6:]
+            context_text = " | ".join([m["content"] for m in recent if isinstance(m.get("content"), str)])
+            reply = await asyncio.to_thread(analyze_image, tmp_name, context_text)
+
+            conversations.setdefault(user_id, []).append({"role": "user", "content": "[sent a screenshot]"})
+            conversations[user_id].append({"role": "assistant", "content": reply})
+            if len(conversations[user_id]) > 40:
+                conversations[user_id] = conversations[user_id][-40:]
+
+            await send_text_safely(update, reply, parse_mode="HTML")
+            schedule_background_tasks(user_id, username, "screenshot image photo")
+
+        except Exception as e:
+            logger.error(f"handle_photo error: {e}")
+            await update.message.reply_text("Could not process the image. Please try again or describe what you see.")
+        finally:
+            if tmp_name:
+                try:
+                    os.remove(tmp_name)
+                except Exception:
+                    pass
 
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -794,37 +1039,64 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with get_user_lock(user_id):
         await _handle_voice_inner(update, context, user_id, username)
 
+
 async def _handle_voice_inner(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str, username: str):
-
-    voice = update.message.voice
-    file = await context.bot.get_file(voice.file_id)
-
-    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp:
-        await file.download_to_drive(tmp.name)
-        transcribed = transcribe_voice(tmp.name)
-
-    if not transcribed:
-        await update.message.reply_text("Could not transcribe your voice message. Please type your question.", parse_mode="HTML")
-        return
-
-    reply = await chat_with_openai(user_id, transcribed)
+    tmp_name = None
     try:
-        await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
-    except Exception:
-        import re
-        plain = re.sub(r'<[^>]+>', '', reply)
-        await update.message.reply_text(plain)
-    extract_and_save_lead(user_id, username)
+        voice = update.message.voice
+        file = await context.bot.get_file(voice.file_id)
+
+        with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp:
+            tmp_name = tmp.name
+            await file.download_to_drive(tmp.name)
+
+        transcribed = await asyncio.to_thread(transcribe_voice, tmp_name)
+
+        if not transcribed:
+            await update.message.reply_text("Could not transcribe your voice message. Please type your question.", parse_mode="HTML")
+            return
+
+        reply = await chat_with_openai(user_id, transcribed)
+        await send_text_safely(update, reply, parse_mode="HTML")
+        schedule_background_tasks(user_id, username, transcribed.lower())
+
+    except Exception as e:
+        logger.error(f"handle_voice error: {e}")
+        await update.message.reply_text("Could not process your voice message. Please type your question.")
+    finally:
+        if tmp_name:
+            try:
+                os.remove(tmp_name)
+            except Exception:
+                pass
+
+
+async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    logger.exception("Unhandled Telegram bot error", exc_info=context.error)
 
 
 def main():
+    if not TELEGRAM_TOKEN:
+        raise RuntimeError("Missing TELEGRAM_TOKEN environment variable")
+    if not OPENAI_API_KEY:
+        raise RuntimeError("Missing OPENAI_API_KEY environment variable")
+
     logger.info("Bit28Support Bot starting...")
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
+    app = (
+        Application.builder()
+        .token(TELEGRAM_TOKEN)
+        .concurrent_updates(True)
+        .build()
+    )
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+    app.add_error_handler(on_error)
+
     app.run_polling(drop_pending_updates=True)
+
 
 
 if __name__ == "__main__":
