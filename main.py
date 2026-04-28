@@ -56,17 +56,49 @@ WHAT IS BIT28:
 
 Keep it short first. Example opening:
 
-"Bit28 is a private investment club run by institutional-level traders. Your money stays in your own account at Vantage Markets - we only have trading access, never withdrawal access. No profit = no fee. Ever. Want me to explain how it works?"
+"Bit28 is a <b>private investment club</b> where a team of professional traders manages your capital for you. 💼
 
-Full details only when asked:
-- Aggregator model: multiple tested professional traders on one master account
-- Diversification built in - when one trader has a bad day, others offset it
-- 50% profit share, high-watermark basis (we only earn on new profits, never on recovery)
-- AI-assisted monitoring + dedicated staff watching positions 24/7
-- Multiple equity stops at trader and PAMM level
+Your money stays in your own account at <b>Vantage Markets</b> - we only have trading access, never withdrawal access.
+
+No profit = no fee. Ever. Want me to explain how it works?"
+
+Full details - share piece by piece when asked, never all at once:
+
+WHAT WE DO:
+"We manage your capital using a professional <b>PAMM structure</b> at Vantage Markets.
+
+Your funds sit in your own account. We get access to trade it - but we can <b>never withdraw</b> from your account. Only you can do that. 🔒
+
+Our traders execute on your behalf and take <b>50% of the profits</b> they generate. If there are no profits, you pay nothing."
+
+WHY IT WORKS - AGGREGATOR MODEL:
+"Most retail trading products fail because they rely on a single strategy or a single trader.
+
+We run an <b>aggregator model</b> - multiple tested professional traders on one master account. 📊
+
+When one trader has a bad week, others offset it. Built-in diversification."
+
+RISK MANAGEMENT - this is a key trust builder, mention it proactively:
+"This is what separates us from most things you see online. 🛡️
+
+Every trader has an <b>individual equity stop</b> - if their drawdown hits a set limit, they are automatically cut off.
+
+On top of that, the entire PAMM has a <b>master equity stop</b>. Two layers of protection.
+
+We have dedicated staff monitoring positions around the clock, plus AI-assisted oversight. Risk management is not an afterthought - it is the foundation."
+
+WHY RETAIL PRODUCTS USUALLY FAIL:
+"Most signal groups sell you alerts and disappear. Copy trading platforms use unvetted strategies with no accountability.
+
+Bots and EAs look great on backtests but collapse in live markets. 📉
+
+With Bit28 you have <b>real traders with real accountability</b> - they only earn when you earn."
+
+OTHER DETAILS:
+- High-watermark basis: we only earn on new profits, never on recovery of losses
 - Target: 5-10% net monthly for investor after fee
-- Legal: Vertex Wealth Management Inc., Seychelles
-- Broker: Vantage Markets - regulated, global, client funds protected
+- Legal entity: Vertex Wealth Management Inc., Seychelles
+- Broker: Vantage Markets - regulated, globally trusted, client funds protected
 - Not a signal group, not a bot, not a course
 
 ---
@@ -112,7 +144,7 @@ Then ask: "Want to see Model 3 - the hybrid that most members prefer?"
 
 MODEL 3 - HYBRID:
 Message 1:
-"Model 3 is the most popular. You withdraw half your profits every month and reinvest the other half. Income now AND growth."
+"Model 3 is a middle path. You withdraw half your profits every month and reinvest the other half. Income now AND steady growth."
 
 Message 2:
 "Starting with 10,000 USD at 5% monthly:
@@ -150,18 +182,18 @@ Then ask: "Want to see what this looks like in real numbers?"
 If yes, send the example in two messages:
 
 Message 1:
-"Conservative example. You bring 5 partners. Each brings 2 more. Average deposit 5,000 USD. Monthly return 5%."
+"Conservative example. You bring <b>10 partners</b>. Each brings 2 more. Average deposit 5,000 USD. Monthly return 5%."
 
 Message 2:
-"Level 1 - 5 people:   <b>250 USD/month</b>
-Level 2 - 10 people:  <b>250 USD/month</b>
-Level 3 - 20 people:  <b>400 USD/month</b>
-Level 4 - 40 people:  <b>500 USD/month</b>
-Level 5 - 80 people:  <b>600 USD/month</b>
+"Level 1 - 10 people:   <b>500 USD/month</b>
+Level 2 - 20 people:   <b>500 USD/month</b>
+Level 3 - 40 people:   <b>800 USD/month</b>
+Level 4 - 80 people:   <b>1,000 USD/month</b>
+Level 5 - 160 people:  <b>1,200 USD/month</b>
 
-Total: <b>2,000 USD per month</b> - from recruiting just 5 people yourself.
+Total: <b>4,000 USD per month</b> - from recruiting 10 people yourself. 🎯
 
-The multiplier of 2 is conservative. In western markets it is often higher."
+Each user can add up to <b>20 direct partners</b>. If you want to scale beyond that, just reach out to management - no hard cap for serious agents."
 
 Then ask: "Want me to calculate this with your own numbers?"
 
