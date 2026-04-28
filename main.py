@@ -1,4 +1,5 @@
 import os
+import asyncio
 import logging
 import requests
 import tempfile
@@ -24,6 +25,13 @@ def sanitize_html(text: str) -> str:
 
 conversations = {}
 agent_lead_data = {}
+user_locks: dict = {}  # Per-user asyncio locks to prevent race conditions
+
+def get_user_lock(user_id: str) -> asyncio.Lock:
+    """Get or create an asyncio.Lock for a specific user. Must be called from async context."""
+    if user_id not in user_locks:
+        user_locks[user_id] = asyncio.Lock()
+    return user_locks[user_id]
 
 SYSTEM_PROMPT = """
 You are Bit28Support, the official AI assistant of Bit28.
@@ -109,15 +117,24 @@ They fail because they are built on single strategies with no accountability and
 
 With Bit28 you have <b>institutional infrastructure</b> behind your capital. The traders only earn when you earn. That alignment does not exist anywhere else at this level."
 
-FUTURE MEMBER BENEFITS - mention naturally when introducing Bit28 or when user asks what makes it special:
-"And this is still early. 🚀
-
-Members who join now will have access to upcoming perks that are being built out:
+FUTURE MEMBER BENEFITS - mention ONLY when someone asks specifically about member perks, benefits, or community. NEVER when explaining what makes Bit28 special or unique.
+"Members who join now will have access to upcoming perks:
 <b>Crypto Visa/Mastercard</b> - spend your profits directly
-<b>Exclusive travel deals</b> - business class, hotels, access through our partner network
+<b>Exclusive travel deals</b> - business class, hotels, partner network access
 <b>Member events</b> - networking, private gatherings
 
-The earlier you join, the better your position in the network. The community is intentionally kept small and selective."
+The community is intentionally kept small and selective."
+
+WHAT MAKES BIT28 SPECIAL - use this when someone asks "what is special", "why Bit28", "what makes you different", "warum Bit28", "was ist besonders":
+"A few things set Bit28 apart. 🏦
+
+First: the <b>people behind it</b>. These are institutional-level traders who have previously managed billions and moved markets. They bring professional infrastructure to a space that is full of amateurs.
+
+Second: the <b>technology and risk systems</b>. Trades are executed and managed with proprietary AI-assisted tools and multi-layer automated monitoring. Two independent equity stops - one at trader level, one at PAMM level - protect the capital automatically.
+
+Third: the <b>alignment</b>. No profit, no fee. Ever. The traders earn only when you earn. That accountability does not exist in signal groups, copy trading, or bot products.
+
+And fourth: the <b>multi-level commission system</b>. Every member can build their own network and earn on the profits of up to 5 levels deep. It is not just an investment - it is an infrastructure you can build a serious income stream on."
 
 OTHER DETAILS:
 - High-watermark basis: we only earn on new profits, never on recovery of losses
@@ -191,13 +208,13 @@ COMMISSION STRUCTURE:
 
 Never explain the full structure unprompted. Build up to it.
 
-Start with:
-"The agent program is one of the most powerful parts of Bit28. You earn on the profits of your entire network - up to <b>5 levels deep</b>. Here are the rates:"
+When someone asks about commissions, agent program, referral rates, or how earning works - respond with EVERYTHING in one go. Do NOT ask "want to see the example?" or "want to see the rates?". Just send it all.
 
-Immediately after the intro, WITHOUT waiting for a response, send the rates AND the full example together:
+Your FULL response when commissions are asked about:
 
-Message - rates:
-"<b>Level 1</b> - your direct recruits: <b>20%</b> of their profit share
+"The agent program is one of the most powerful parts of Bit28. You earn on the profits of your entire network - up to <b>5 levels deep</b>.
+
+<b>Level 1</b> - your direct recruits: <b>20%</b> of their profit share
 <b>Level 2:</b> 10%
 <b>Level 3:</b> 8%
 <b>Level 4:</b> 5%
@@ -205,26 +222,23 @@ Message - rates:
 
 Level 6 and beyond: 0%. The window always moves with you."
 
-Then immediately send the example (two messages):
+Then immediately in the SAME response or very next message without asking:
 
-Message 1:
-"Conservative example. You bring <b>10 partners</b>. Each brings 2 more. Average deposit 5,000 USD. Monthly return 5%:"
+"Conservative example - you bring <b>10 partners</b>, each brings 2 more, average deposit 5,000 USD, monthly return 5%:
 
-Message 2 - show ALL levels at once to create FOMO and greed, never tease one level at a time:
-"📊 <b>Level 1</b> - 10 people:    <b>500 USD/month</b>
+📊 <b>Level 1</b> - 10 people:    <b>500 USD/month</b>
 📊 <b>Level 2</b> - 20 people:    <b>500 USD/month</b>
 📊 <b>Level 3</b> - 40 people:    <b>800 USD/month</b>
 📊 <b>Level 4</b> - 80 people:  <b>1,000 USD/month</b>
-📊 <b>Level 5</b> - 160 people: <b>1,200 USD/month</b>"
+📊 <b>Level 5</b> - 160 people: <b>1,200 USD/month</b>
 
-Message 3 - the punchline, send separately:
-"Total: <b>4,000 USD every month</b> 💰
+Total: <b>4,000 USD every month</b> 💰
 
 From bringing just 10 people yourself. The rest builds itself.
 
-Each agent can have up to <b>20 direct partners</b> - and if you want to go beyond that, management can expand your limit on request."
+Each agent can add up to <b>20 direct partners</b>. Want to go beyond that? Management can extend your limit on request."
 
-Then ask: "Want me to run the numbers with YOUR deposit amount and network size?"
+Then close with: "Want me to calculate it with YOUR numbers?"
 
 If they give numbers, recalculate all 5 levels and present cleanly in the same format.
 
@@ -590,7 +604,7 @@ def extract_and_save_lead(user_id: str, username: str):
         logger.error(f"extract_and_save_lead error: {e}")
 
 
-def chat_with_openai(user_id: str, message: str) -> str:
+async def chat_with_openai(user_id: str, message: str) -> str:
     if user_id not in conversations:
         conversations[user_id] = []
 
@@ -600,17 +614,21 @@ def chat_with_openai(user_id: str, message: str) -> str:
         conversations[user_id] = conversations[user_id][-40:]
 
     try:
-        resp = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
-            json={
-                "model": "gpt-4o",
-                "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + conversations[user_id],
-                "max_tokens": 800,
-                "temperature": 0.65
-            },
-            timeout=20
-        )
+        msgs = [{"role": "system", "content": SYSTEM_PROMPT}] + conversations[user_id]
+        loop = asyncio.get_event_loop()
+        def _call():
+            return requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": "gpt-4o",
+                    "messages": msgs,
+                    "max_tokens": 800,
+                    "temperature": 0.65
+                },
+                timeout=40
+            )
+        resp = await loop.run_in_executor(None, _call)
         reply = resp.json()["choices"][0]["message"]["content"]
         conversations[user_id].append({"role": "assistant", "content": reply})
         return reply
@@ -703,6 +721,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message.text
     msg_lower = message.lower()
 
+    async with get_user_lock(user_id):
+        await _handle_text_inner(update, context, user_id, username, message, msg_lower)
+
+async def _handle_text_inner(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str, username: str, message: str, msg_lower: str):
     # Send commission image once at the start of a commission conversation
     commission_trigger_keywords = [
         "commission", "provision", "struktur", "structure", "levels", "ebenen",
@@ -715,7 +737,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if is_commission_question and not context.user_data.get("commission_shown"):
         await send_commission_image(update, context)
 
-    reply = chat_with_openai(user_id, message)
+    reply = await chat_with_openai(user_id, message)
     try:
         await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
     except Exception:
@@ -746,31 +768,33 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = str(user.id)
     username = user.username or ""
-
-    photo = update.message.photo[-1]
-    file = await context.bot.get_file(photo.file_id)
-
-    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-        await file.download_to_drive(tmp.name)
-        recent = conversations.get(user_id, [])[-6:]
-        context_text = " | ".join([m["content"] for m in recent if isinstance(m["content"], str)])
-        reply = analyze_image(tmp.name, context_text)
-
-    conversations.setdefault(user_id, []).append({"role": "user", "content": "[sent a screenshot]"})
-    conversations[user_id].append({"role": "assistant", "content": reply})
-    try:
-        await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
-    except Exception:
-        import re
-        plain = re.sub(r'<[^>]+>', '', reply)
-        await update.message.reply_text(plain)
-    extract_and_save_lead(user_id, username)
+    async with get_user_lock(user_id):
+        photo = update.message.photo[-1]
+        file = await context.bot.get_file(photo.file_id)
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+            await file.download_to_drive(tmp.name)
+            recent = conversations.get(user_id, [])[-6:]
+            context_text = " | ".join([m["content"] for m in recent if isinstance(m["content"], str)])
+            reply = analyze_image(tmp.name, context_text)
+        conversations.setdefault(user_id, []).append({"role": "user", "content": "[sent a screenshot]"})
+        conversations[user_id].append({"role": "assistant", "content": reply})
+        try:
+            await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
+        except Exception:
+            import re
+            plain = re.sub(r'<[^>]+>', '', reply)
+            await update.message.reply_text(plain)
+        extract_and_save_lead(user_id, username)
 
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = str(user.id)
     username = user.username or ""
+    async with get_user_lock(user_id):
+        await _handle_voice_inner(update, context, user_id, username)
+
+async def _handle_voice_inner(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str, username: str):
 
     voice = update.message.voice
     file = await context.bot.get_file(voice.file_id)
@@ -783,7 +807,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Could not transcribe your voice message. Please type your question.", parse_mode="HTML")
         return
 
-    reply = chat_with_openai(user_id, transcribed)
+    reply = await chat_with_openai(user_id, transcribed)
     try:
         await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
     except Exception:
