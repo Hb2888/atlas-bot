@@ -15,6 +15,13 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 COMMISSION_IMAGE_URL = "https://base44.app/api/apps/69e5e7aaf26f910c2292c93d/files/mp/public/69e5e7aaf26f910c2292c93d/e2341a810_file_295.jpg"
 
+def sanitize_html(text: str) -> str:
+    """Escape bare & ampersands that are not part of HTML entities, to prevent Telegram parse errors."""
+    import re
+    # Replace & that are not already part of &amp; &lt; &gt; &quot; &#...
+    return re.sub(r'&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)', '&amp;', text)
+
+
 conversations = {}
 agent_lead_data = {}
 
@@ -79,28 +86,38 @@ Your funds sit in your own account. We get access to trade it - but we can <b>ne
 
 Our traders execute on your behalf and take <b>50% of the profits</b> they generate. If there are no profits, you pay nothing."
 
-WHY IT WORKS - AGGREGATOR MODEL:
-"Most retail trading products fail because they rely on a single strategy or a single trader.
+WHO RUNS BIT28 - use this language, never sound retail:
+"The people running this are not hobbyist traders. 🏦
 
-We run an <b>aggregator model</b> - multiple tested professional traders on one master account. 📊
+These are <b>institutional-level professionals</b> who have previously managed billions and moved markets. They understand how markets work from the inside - because they helped shape price action themselves.
 
-When one trader has a bad week, others offset it. Built-in diversification."
+Their edge comes from a combination of <b>deep fundamental analysis</b>, technical execution, and proprietary AI-assisted systems built in-house. These are not off-the-shelf tools - they were engineered specifically for how these traders operate."
 
-RISK MANAGEMENT - this is a key trust builder, mention it proactively:
-"This is what separates us from most things you see online. 🛡️
+Message 2 - on risk management:
+"On the risk side, everything runs through a <b>multi-layered system</b>. 🛡️
 
-Every trader has an <b>individual equity stop</b> - if their drawdown hits a set limit, they are automatically cut off.
+Each position is monitored by automated execution and surveillance systems. At the PAMM level there is a master equity stop that kicks in automatically. No human emotion involved.
 
-On top of that, the entire PAMM has a <b>master equity stop</b>. Two layers of protection.
+The result: <b>consistent, managed exposure</b> - not the boom-and-bust you see in retail products.
 
-We have dedicated staff monitoring positions around the clock, plus AI-assisted oversight. Risk management is not an afterthought - it is the foundation."
+This is what separates institutional infrastructure from everything else out there."
 
-WHY RETAIL PRODUCTS USUALLY FAIL:
-"Most signal groups sell you alerts and disappear. Copy trading platforms use unvetted strategies with no accountability.
+WHY OTHER PRODUCTS FAIL - only if asked or relevant:
+"Signal groups, copy trading, EAs - they all look good on paper. 📉
 
-Bots and EAs look great on backtests but collapse in live markets. 📉
+They fail because they are built on single strategies with no accountability and no real risk management.
 
-With Bit28 you have <b>real traders with real accountability</b> - they only earn when you earn."
+With Bit28 you have <b>institutional infrastructure</b> behind your capital. The traders only earn when you earn. That alignment does not exist anywhere else at this level."
+
+FUTURE MEMBER BENEFITS - mention naturally when introducing Bit28 or when user asks what makes it special:
+"And this is still early. 🚀
+
+Members who join now will have access to upcoming perks that are being built out:
+<b>Crypto Visa/Mastercard</b> - spend your profits directly
+<b>Exclusive travel deals</b> - business class, hotels, access through our partner network
+<b>Member events</b> - networking, private gatherings
+
+The earlier you join, the better your position in the network. The community is intentionally kept small and selective."
 
 OTHER DETAILS:
 - High-watermark basis: we only earn on new profits, never on recovery of losses
@@ -175,20 +192,20 @@ COMMISSION STRUCTURE:
 Never explain the full structure unprompted. Build up to it.
 
 Start with:
-"The agent program is actually one of the most powerful parts of Bit28. You earn on profits from your entire network - up to <b>5 levels deep</b>. Want me to show you the rates?"
+"The agent program is one of the most powerful parts of Bit28. You earn on the profits of your entire network - up to <b>5 levels deep</b>. Here are the rates:"
 
-If yes, send the rates as a short message:
-"Level 1 - people you directly recruit: <b>20%</b> of their profit payout
-Level 2: 10%
-Level 3: 8%
-Level 4: 5%
-Level 5: 3%
+Immediately after the intro, WITHOUT waiting for a response, send the rates AND the full example together:
 
-From level 6 onwards: 0%. The 5-level window shifts with you."
+Message - rates:
+"<b>Level 1</b> - your direct recruits: <b>20%</b> of their profit share
+<b>Level 2:</b> 10%
+<b>Level 3:</b> 8%
+<b>Level 4:</b> 5%
+<b>Level 5:</b> 3%
 
-Then ask: "Want to see what this looks like in real numbers?"
+Level 6 and beyond: 0%. The window always moves with you."
 
-If yes, send the example in two messages:
+Then immediately send the example (two messages):
 
 Message 1:
 "Conservative example. You bring <b>10 partners</b>. Each brings 2 more. Average deposit 5,000 USD. Monthly return 5%:"
@@ -700,7 +717,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply = chat_with_openai(user_id, message)
     try:
-        await update.message.reply_text(reply, parse_mode="HTML")
+        await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
     except Exception:
         # Fallback: strip HTML tags and send as plain text
         import re
@@ -742,7 +759,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conversations.setdefault(user_id, []).append({"role": "user", "content": "[sent a screenshot]"})
     conversations[user_id].append({"role": "assistant", "content": reply})
     try:
-        await update.message.reply_text(reply, parse_mode="HTML")
+        await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
     except Exception:
         import re
         plain = re.sub(r'<[^>]+>', '', reply)
@@ -768,7 +785,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply = chat_with_openai(user_id, transcribed)
     try:
-        await update.message.reply_text(reply, parse_mode="HTML")
+        await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
     except Exception:
         import re
         plain = re.sub(r'<[^>]+>', '', reply)
