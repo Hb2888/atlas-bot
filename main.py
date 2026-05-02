@@ -18,22 +18,22 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 COMMISSION_IMAGE_URL = "https://base44.app/api/apps/69e5e7aaf26f910c2292c93d/files/mp/public/69e5e7aaf26f910c2292c93d/e2341a810_file_295.jpg"
 
 def sanitize_html(text: str) -> str:
-"""Escape bare & ampersands that are not part of HTML entities, to prevent Telegram parse errors."""
-import re
-# Replace & that are not already part of &amp; &lt; &gt; &quot; &#...
-return re.sub(r'&(?!(?:amp|lt|gt|quot|apos|#\+|#x[0-9a-fA-F]+);)', '&amp;', text)
+    """Escape bare & ampersands that are not part of HTML entities, to prevent Telegram parse errors."""
+    import re
+    # Replace & that are not already part of &amp; &lt; &gt; &quot; &#...
+    return re.sub(r'&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)', '&amp;', text)
 
 
-conversations = \{\}
-agent_lead_data = \{\}
-user_locks: dict = \{\}  # Per-user asyncio locks to prevent race conditions
-user_pending: dict = \{\}  # Stores latest pending message per user while bot is processing
+conversations = {}
+agent_lead_data = {}
+user_locks: dict = {}  # Per-user asyncio locks to prevent race conditions
+user_pending: dict = {}  # Stores latest pending message per user while bot is processing
 
 def get_user_lock(user_id: str) -> asyncio.Lock:
-"""Get or create an asyncio.Lock for a specific user. Must be called from async context."""
-if user_id not in user_locks:
-user_locks[user_id] = asyncio.Lock()
-return user_locks[user_id]
+    """Get or create an asyncio.Lock for a specific user. Must be called from async context."""
+    if user_id not in user_locks:
+        user_locks[user_id] = asyncio.Lock()
+    return user_locks[user_id]
 
 SYSTEM_PROMPT = """
 You are Bit28Support, the official AI assistant of Bit28.
@@ -49,11 +49,11 @@ This means:
 - One idea at a time. Then stop. Wait for their reaction.
 - Never use bullet points with dashes or numbers unless you are showing a calculation or step-by-step list
 - FORMATTING - THIS IS CRITICAL:
-NEVER use asterisks (*) for bold. NEVER use **text**. NEVER use markdown.
-The ONLY way to make something bold is: <b>text</b>
-Use <b>bold</b> for key numbers, key words, and punchlines in every message.
-Use relevant emojis naturally:    money,    growth,   confirm,    trust,    goal,    next step
-Blank line between every paragraph. Never a wall of text.
+  NEVER use asterisks (*) for bold. NEVER use **text**. NEVER use markdown.
+  The ONLY way to make something bold is: <b>text</b>
+  Use <b>bold</b> for key numbers, key words, and punchlines in every message.
+  Use relevant emojis naturally: 💰 money, 📈 growth, ✅ confirm, 🔒 trust, 🎯 goal, 👇 next step
+  Blank line between every paragraph. Never a wall of text.
 - Always end with a short question or clear next step
 - If a topic requires a lot of information, split naturally into multiple short messages
 
@@ -73,7 +73,7 @@ WHAT IS BIT28:
 
 Keep it short first. Example opening:
 
-"Bit28 is a <b>private investment club</b> where a team of professional traders actively manages your capital.   
+"Bit28 is a <b>private investment club</b> where a team of professional traders actively manages your capital. 💼
 
 Your money stays in your own personal account at <b>one of the world's largest regulated brokers</b> - licensed across multiple jurisdictions. We only have trading access, <b>never</b> withdrawal access.
 
@@ -81,9 +81,9 @@ Your money stays in your own personal account at <b>one of the world's largest r
 
 There are actually two ways to benefit from Bit28:
 
-<b>As an investor</b> - your capital grows while professional traders do the work.
+📈 <b>As an investor</b> - your capital grows while professional traders do the work.
 
-<b>As an agent</b> - you build your own network, earn commissions on the profits of everyone in your team - up to 5 levels deep. Every member essentially becomes a mini fund manager.
+💰 <b>As an agent</b> - you build your own network, earn commissions on the profits of everyone in your team - up to 5 levels deep. Every member essentially becomes a mini fund manager.
 
 Want me to explain the investment side, the agent side, or both?"
 
@@ -92,19 +92,19 @@ Full details - share piece by piece when asked, never all at once:
 WHAT WE DO:
 "We manage your capital using a professional <b>PAMM structure</b> at Vantage Markets.
 
-Your funds sit in your own account. We get access to trade it - but we can <b>never withdraw</b> from your account. Only you can do that.   
+Your funds sit in your own account. We get access to trade it - but we can <b>never withdraw</b> from your account. Only you can do that. 🔒
 
 Our traders execute on your behalf and take <b>50% of the profits</b> they generate. If there are no profits, you pay nothing."
 
 WHO RUNS BIT28 - use this language, never sound retail:
-"The people running this are not hobbyist traders.   
+"The people running this are not hobbyist traders. 🏦
 
 These are <b>institutional-level professionals</b> who have previously managed billions and moved markets. They understand how markets work from the inside - because they helped shape price action themselves.
 
 Their edge comes from a combination of <b>deep fundamental analysis</b>, technical execution, and proprietary AI-assisted systems built in-house. These are not off-the-shelf tools - they were engineered specifically for how these traders operate."
 
 Message 2 - on risk management:
-"On the risk side, everything runs through a <b>multi-layered system</b>.    
+"On the risk side, everything runs through a <b>multi-layered system</b>. 🛡️
 
 Each position is monitored by automated execution and surveillance systems. At the PAMM level there is a master equity stop that kicks in automatically. No human emotion involved.
 
@@ -113,7 +113,7 @@ The result: <b>consistent, managed exposure</b> - not the boom-and-bust you see 
 This is what separates institutional infrastructure from everything else out there."
 
 WHY OTHER PRODUCTS FAIL - only if asked or relevant:
-"Signal groups, copy trading, EAs - they all look good on paper.   
+"Signal groups, copy trading, EAs - they all look good on paper. 📉
 
 They fail because they are built on single strategies with no accountability and no real risk management.
 
@@ -128,7 +128,7 @@ FUTURE MEMBER BENEFITS - mention ONLY when someone asks specifically about membe
 The community is intentionally kept small and selective."
 
 WHAT MAKES BIT28 SPECIAL - use this when someone asks "what is special", "why Bit28", "what makes you different", "warum Bit28", "was ist besonders":
-"A few things set Bit28 apart.   
+"A few things set Bit28 apart. 🏦
 
 First: the <b>people behind it</b>. These are institutional-level traders who have previously managed billions and moved markets. They bring professional infrastructure to a space that is full of amateurs.
 
@@ -179,9 +179,9 @@ Message 1:
 
 Message 2:
 "At 5-10% monthly net:
-10,000 USD   <b>500 to 1,000 USD per month</b>
-50,000 USD   <b>2,500 to 5,000 USD per month</b>
-100,000 USD   <b>5,000 to 10,000 USD per month</b>
+10,000 USD → <b>500 to 1,000 USD per month</b>
+50,000 USD → <b>2,500 to 5,000 USD per month</b>
+100,000 USD → <b>5,000 to 10,000 USD per month</b>
 
 Think of it as a salary that arrives without you working."
 
@@ -228,13 +228,13 @@ Then immediately in the SAME response or very next message without asking:
 
 "Conservative example - you bring <b>10 partners</b>, each brings 2 more, average deposit 5,000 USD, monthly return 5%:
 
-<b>Level 1</b> - 10 people:    <b>500 USD/month</b>
-<b>Level 2</b> - 20 people:    <b>500 USD/month</b>
-<b>Level 3</b> - 40 people:    <b>800 USD/month</b>
-<b>Level 4</b> - 80 people:  <b>1,000 USD/month</b>
-<b>Level 5</b> - 160 people: <b>1,200 USD/month</b>
+📊 <b>Level 1</b> - 10 people:    <b>500 USD/month</b>
+📊 <b>Level 2</b> - 20 people:    <b>500 USD/month</b>
+📊 <b>Level 3</b> - 40 people:    <b>800 USD/month</b>
+📊 <b>Level 4</b> - 80 people:  <b>1,000 USD/month</b>
+📊 <b>Level 5</b> - 160 people: <b>1,200 USD/month</b>
 
-Total: <b>4,000 USD every month</b>   
+Total: <b>4,000 USD every month</b> 💰
 
 From bringing just 10 people yourself. The rest builds itself.
 
@@ -304,12 +304,12 @@ BEFORE starting steps - always tease the process first with this overview, then 
 
 "Getting set up is straightforward - 4 simple steps:
 
-1   Create your account
-2   Verify your identity
-3   Set up your PAMM investment account
-4   Deposit and connect to our fund
+1️⃣ Create your account
+2️⃣ Verify your identity
+3️⃣ Set up your PAMM investment account
+4️⃣ Deposit and connect to our fund
 
-Takes about 10-15 minutes. Ready to go through it together?   "
+Takes about 10-15 minutes. Ready to go through it together? 👇"
 
 Only after they confirm - then ask: "Quick question first - will you be depositing in USD, USDT, or USDC? Or in another currency like EUR or GBP?"
 
@@ -348,7 +348,7 @@ If yes:
 "Open that link. Your server, login number, and MT5 password were sent to you by email when you opened the account - check your inbox and spam. Fill in the form and click Subscribe. Confirmation takes up to 24 hours. Send me a screenshot if anything looks unclear."
 
 Step 6 - done:
-"You are all set.    You can track your performance and manage withdrawals at any time here:
+"You are all set. 🎉 You can track your performance and manage withdrawals at any time here:
 
 https://pamm16.vantagemarkets.com/app/auth/investor
 
@@ -376,10 +376,10 @@ BEFORE starting data collection - always tease the process first:
 
 "Becoming an agent is 4 steps:
 
-1   Be an active Bit28 member (min. 100 USD invested)
-2   Register as agent - right here or via DM
-3   Share your personal referral link and manage your members
-4   Receive commissions every Monday   
+1️⃣ Be an active Bit28 member (min. 100 USD invested)
+2️⃣ Register as agent - right here or via DM
+3️⃣ Share your personal referral link and manage your members
+4️⃣ Receive commissions every Monday 💰
 
 That is it. Want me to get you registered now?"
 
@@ -428,479 +428,478 @@ COMPLIANCE:
 
 
 def save_lead(data: dict, existing_id: str = None):
-"""Save or update a lead via the public bit28Dashboard function. No token needed."""
-DASHBOARD_URL = "https://atlas-2292c93d.base44.app/api/functions/bit28Dashboard"
-try:
-payload = dict(data)
-if existing_id:
-payload["lead_id"] = existing_id
-resp = requests.post(DASHBOARD_URL, json=payload, headers=\{"Content-Type": "application/json"\}, timeout=15)
-logger.info(f"save_lead \{resp.status_code\}: \{resp.text[:200]\}")
-if resp.status_code in [200, 201]:
-result = resp.json()
-return result.get("id") or existing_id or True
-logger.error(f"save_lead failed: \{resp.status_code\} \{resp.text[:200]\}")
-return None
-except Exception as e:
-logger.error(f"save_lead error: \{e\}")
-return None
+    """Save or update a lead via the public bit28Dashboard function. No token needed."""
+    DASHBOARD_URL = "https://atlas-2292c93d.base44.app/api/functions/bit28Dashboard"
+    try:
+        payload = dict(data)
+        if existing_id:
+            payload["lead_id"] = existing_id
+        resp = requests.post(DASHBOARD_URL, json=payload, headers={"Content-Type": "application/json"}, timeout=15)
+        logger.info(f"save_lead {resp.status_code}: {resp.text[:200]}")
+        if resp.status_code in [200, 201]:
+            result = resp.json()
+            return result.get("id") or existing_id or True
+        logger.error(f"save_lead failed: {resp.status_code} {resp.text[:200]}")
+        return None
+    except Exception as e:
+        logger.error(f"save_lead error: {e}")
+        return None
 
 
 def save_chat_summary(user_id: str, username: str, summary: str, objections: str, sentiment: str, follow_up_needed: bool, follow_up_message: str):
-"""Save or update a chat summary and objections to the BotChat entity."""
-DASHBOARD_URL = "https://atlas-2292c93d.base44.app/api/functions/bit28Dashboard"
-try:
-payload = \{
-"action": "save_chat",
-"telegram_user_id": user_id,
-"telegram_username": username,
-"summary": summary,
-"objections": objections,
-"sentiment": sentiment,
-"follow_up_needed": follow_up_needed,
-"follow_up_message": follow_up_message,
-"last_message_date": __import__("datetime").datetime.utcnow().isoformat()
-\}
-resp = requests.post(DASHBOARD_URL, json=payload, headers=\{"Content-Type": "application/json"\}, timeout=15)
-logger.info(f"save_chat_summary \{resp.status_code\}: \{resp.text[:200]\}")
-except Exception as e:
-logger.error(f"save_chat_summary error: \{e\}")
+    """Save or update a chat summary and objections to the BotChat entity."""
+    DASHBOARD_URL = "https://atlas-2292c93d.base44.app/api/functions/bit28Dashboard"
+    try:
+        payload = {
+            "action": "save_chat",
+            "telegram_user_id": user_id,
+            "telegram_username": username,
+            "summary": summary,
+            "objections": objections,
+            "sentiment": sentiment,
+            "follow_up_needed": follow_up_needed,
+            "follow_up_message": follow_up_message,
+            "last_message_date": __import__("datetime").datetime.utcnow().isoformat()
+        }
+        resp = requests.post(DASHBOARD_URL, json=payload, headers={"Content-Type": "application/json"}, timeout=15)
+        logger.info(f"save_chat_summary {resp.status_code}: {resp.text[:200]}")
+    except Exception as e:
+        logger.error(f"save_chat_summary error: {e}")
 
 
 def analyze_and_save_chat(user_id: str, username: str):
-"""Use GPT to analyze the conversation and extract summary, objections, sentiment."""
-convo = conversations.get(user_id, [])
-if len(convo) < 4:
-return
-try:
-extract_payload = \{
-"model": "gpt-4o",
-"messages": [
-\{
-"role": "system",
-"content": (
-"You are a sales analyst. Analyze the conversation and return ONLY a valid JSON object with these keys: "
-"summary (string, 1-2 sentences what the user was interested in), "
-"objections (string, list all concerns or objections the user raised, or 'none'), "
-"sentiment (string: positive, neutral, skeptical, or negative), "
-"follow_up_needed (boolean, true if user showed interest but did not complete registration or onboarding), "
-"follow_up_message (string, suggested follow-up message to send to this user, or empty string). "
-"No markdown, no explanation, just raw JSON."
-)
-\},
-\{
-"role": "user",
-"content": __import__("json").dumps(convo[-40:])
-\}
-],
-"max_tokens": 400,
-"temperature": 0
-\}
-resp = requests.post(
-"https://api.openai.com/v1/chat/completions",
-headers=\{"Authorization": f"Bearer \{OPENAI_API_KEY\}", "Content-Type": "application/json"\},
-json=extract_payload,
-timeout=15
-)
-raw = resp.json()["choices"][0]["message"]["content"].strip()
-raw = raw.replace("```json", "").replace("```", "").strip()
-data = __import__("json").loads(raw)
-save_chat_summary(
-user_id=user_id,
-username=username,
-summary=data.get("summary", ""),
-objections=data.get("objections", "none"),
-sentiment=data.get("sentiment", "neutral"),
-follow_up_needed=data.get("follow_up_needed", False),
-follow_up_message=data.get("follow_up_message", "")
-)
-logger.info(f"Chat analyzed for \{user_id\}: sentiment=\{data.get('sentiment')\}, follow_up=\{data.get('follow_up_needed')\}")
-except Exception as e:
-logger.error(f"analyze_and_save_chat error: \{e\}")
+    """Use GPT to analyze the conversation and extract summary, objections, sentiment."""
+    convo = conversations.get(user_id, [])
+    if len(convo) < 4:
+        return
+    try:
+        extract_payload = {
+            "model": "gpt-4o",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a sales analyst. Analyze the conversation and return ONLY a valid JSON object with these keys: "
+                        "summary (string, 1-2 sentences what the user was interested in), "
+                        "objections (string, list all concerns or objections the user raised, or 'none'), "
+                        "sentiment (string: positive, neutral, skeptical, or negative), "
+                        "follow_up_needed (boolean, true if user showed interest but did not complete registration or onboarding), "
+                        "follow_up_message (string, suggested follow-up message to send to this user, or empty string). "
+                        "No markdown, no explanation, just raw JSON."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": __import__("json").dumps(convo[-40:])
+                }
+            ],
+            "max_tokens": 400,
+            "temperature": 0
+        }
+        resp = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+            json=extract_payload,
+            timeout=15
+        )
+        raw = resp.json()["choices"][0]["message"]["content"].strip()
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        data = __import__("json").loads(raw)
+        save_chat_summary(
+            user_id=user_id,
+            username=username,
+            summary=data.get("summary", ""),
+            objections=data.get("objections", "none"),
+            sentiment=data.get("sentiment", "neutral"),
+            follow_up_needed=data.get("follow_up_needed", False),
+            follow_up_message=data.get("follow_up_message", "")
+        )
+        logger.info(f"Chat analyzed for {user_id}: sentiment={data.get('sentiment')}, follow_up={data.get('follow_up_needed')}")
+    except Exception as e:
+        logger.error(f"analyze_and_save_chat error: {e}")
 
 
 def extract_and_save_lead(user_id: str, username: str):
-convo = conversations.get(user_id, [])
-if len(convo) < 2:
-return
+    convo = conversations.get(user_id, [])
+    if len(convo) < 2:
+        return
 
-existing = agent_lead_data.get(user_id, \{\})
-if existing.get("complete"):
-return
+    existing = agent_lead_data.get(user_id, {})
+    if existing.get("complete"):
+        return
 
-try:
-extract_payload = \{
-"model": "gpt-4o",
-"messages": [
-\{
-"role": "system",
-"content": (
-"You are a data extractor. From the conversation below, extract agent registration data. "
-"Return ONLY a valid JSON object with these exact keys: "
-"name, email, vantage_user_id, referred_by, estimated_users_3months, estimated_avg_deposit_usd. "
-"All values are strings or numbers or null. "
-"Extract only what the USER explicitly stated. No markdown, no explanation, just raw JSON."
-)
-\},
-\{
-"role": "user",
-"content": json.dumps(convo[-30:])
-\}
-],
-"max_tokens": 300,
-"temperature": 0
-\}
-resp = requests.post(
-"https://api.openai.com/v1/chat/completions",
-headers=\{"Authorization": f"Bearer \{OPENAI_API_KEY\}", "Content-Type": "application/json"\},
-json=extract_payload,
-timeout=15
-)
-raw = resp.json()["choices"][0]["message"]["content"].strip()
-raw = raw.replace("```json", "").replace("```", "").strip()
-lead = json.loads(raw)
+    try:
+        extract_payload = {
+            "model": "gpt-4o",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a data extractor. From the conversation below, extract agent registration data. "
+                        "Return ONLY a valid JSON object with these exact keys: "
+                        "name, email, vantage_user_id, referred_by, estimated_users_3months, estimated_avg_deposit_usd. "
+                        "All values are strings or numbers or null. "
+                        "Extract only what the USER explicitly stated. No markdown, no explanation, just raw JSON."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(convo[-30:])
+                }
+            ],
+            "max_tokens": 300,
+            "temperature": 0
+        }
+        resp = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+            json=extract_payload,
+            timeout=15
+        )
+        raw = resp.json()["choices"][0]["message"]["content"].strip()
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        lead = json.loads(raw)
 
-lead["telegram_username"] = username
-lead["telegram_user_id"] = user_id
-lead["status"] = "new"
+        lead["telegram_username"] = username
+        lead["telegram_user_id"] = user_id
+        lead["status"] = "new"
 
-for field in ["estimated_users_3months", "estimated_avg_deposit_usd"]:
-val = lead.get(field)
-if val is not None:
-try:
-lead[field] = float(str(val).replace(",", ".").replace("$", "").strip())
-except Exception:
-lead[field] = None
+        for field in ["estimated_users_3months", "estimated_avg_deposit_usd"]:
+            val = lead.get(field)
+            if val is not None:
+                try:
+                    lead[field] = float(str(val).replace(",", ".").replace("$", "").strip())
+                except Exception:
+                    lead[field] = None
 
-has_anything = any([
-lead.get("email"),
-lead.get("vantage_user_id"),
-lead.get("name"),
-lead.get("referred_by"),
-lead.get("estimated_users_3months"),
-lead.get("estimated_avg_deposit_usd"),
-])
+        has_anything = any([
+            lead.get("email"),
+            lead.get("vantage_user_id"),
+            lead.get("name"),
+            lead.get("referred_by"),
+            lead.get("estimated_users_3months"),
+            lead.get("estimated_avg_deposit_usd"),
+        ])
 
-if not has_anything:
-logger.info(f"No lead data yet for \{user_id\}")
-return
+        if not has_anything:
+            logger.info(f"No lead data yet for {user_id}")
+            return
 
-existing_id = existing.get("id")
-saved_id = save_lead(lead, existing_id=existing_id)
+        existing_id = existing.get("id")
+        saved_id = save_lead(lead, existing_id=existing_id)
 
-is_complete = all([
-lead.get("email"),
-lead.get("name"),
-lead.get("referred_by"),
-lead.get("estimated_users_3months") is not None,
-lead.get("estimated_avg_deposit_usd") is not None,
-])
+        is_complete = all([
+            lead.get("email"),
+            lead.get("name"),
+            lead.get("referred_by"),
+            lead.get("estimated_users_3months") is not None,
+            lead.get("estimated_avg_deposit_usd") is not None,
+        ])
 
-agent_lead_data[user_id] = \{
-"id": saved_id or existing_id,
-"complete": is_complete
-\}
-logger.info(f"Lead for \{user_id\}: id=\{saved_id or existing_id\}, complete=\{is_complete\}, data=\{lead\}")
+        agent_lead_data[user_id] = {
+            "id": saved_id or existing_id,
+            "complete": is_complete
+        }
+        logger.info(f"Lead for {user_id}: id={saved_id or existing_id}, complete={is_complete}, data={lead}")
 
-except Exception as e:
-logger.error(f"extract_and_save_lead error: \{e\}")
+    except Exception as e:
+        logger.error(f"extract_and_save_lead error: {e}")
 
 
 async def chat_with_openai(user_id: str, message: str) -> str:
-if user_id not in conversations:
-conversations[user_id] = []
+    if user_id not in conversations:
+        conversations[user_id] = []
 
-conversations[user_id].append(\{"role": "user", "content": message\})
+    conversations[user_id].append({"role": "user", "content": message})
 
-if len(conversations[user_id]) > 40:
-conversations[user_id] = conversations[user_id][-40:]
+    if len(conversations[user_id]) > 40:
+        conversations[user_id] = conversations[user_id][-40:]
 
-try:
-msgs = [\{"role": "system", "content": SYSTEM_PROMPT\}] + conversations[user_id]
-loop = asyncio.get_event_loop()
-def _call():
-return requests.post(
-"https://api.openai.com/v1/chat/completions",
-headers=\{"Authorization": f"Bearer \{OPENAI_API_KEY\}", "Content-Type": "application/json"\},
-json=\{
-"model": "gpt-4o",
-"messages": msgs,
-"max_tokens": 800,
-"temperature": 0.65
-\},
-timeout=40
-)
-resp = await loop.run_in_executor(None, _call)
-response_json = resp.json()
-logger.info(f"OpenAI HTTP \{resp.status_code\}, keys=\{list(response_json.keys())\}")
-if resp.status_code != 200 or "choices" not in response_json:
-logger.error(f"OpenAI bad response \{resp.status_code\}: \{str(response_json)[:400]\}")
-# If rate limited, wait and retry once
-if resp.status_code == 429 or response_json.get("error", \{\}).get("type") == "requests_rate_limit_exceeded":
-import time
-logger.info("Rate limited - waiting 3s and retrying...")
-await asyncio.sleep(3)
-retry_resp = await loop.run_in_executor(None, _call)
-response_json = retry_resp.json()
-if "choices" not in response_json:
-logger.error(f"Retry also failed: \{str(response_json)[:400]\}")
-return "I'll be right with you! Please resend your message in about 10 seconds and I'll get back to you right away."
-else:
-return "I'll be right with you! Please resend your message in about 10 seconds and I'll get back to you right away."
-reply = response_json["choices"][0]["message"]["content"]
-conversations[user_id].append(\{"role": "assistant", "content": reply\})
-return reply
-except Exception as e:
-import traceback
-logger.error(f"OpenAI error type=\{type(e).__name__\} msg=\{e\}")
-logger.error(traceback.format_exc())
-return "I'll be right with you! Please resend your message in about 10 seconds and I'll get back to you right away."
+    try:
+        msgs = [{"role": "system", "content": SYSTEM_PROMPT}] + conversations[user_id]
+        loop = asyncio.get_event_loop()
+        def _call():
+            return requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": "gpt-4o",
+                    "messages": msgs,
+                    "max_tokens": 800,
+                    "temperature": 0.65
+                },
+                timeout=40
+            )
+        resp = await loop.run_in_executor(None, _call)
+        response_json = resp.json()
+        logger.info(f"OpenAI HTTP {resp.status_code}, keys={list(response_json.keys())}")
+        if resp.status_code != 200 or "choices" not in response_json:
+            logger.error(f"OpenAI bad response {resp.status_code}: {str(response_json)[:400]}")
+            # If rate limited, wait and retry once
+            if resp.status_code == 429 or response_json.get("error", {}).get("type") == "requests_rate_limit_exceeded":
+                import time
+                logger.info("Rate limited - waiting 3s and retrying...")
+                await asyncio.sleep(3)
+                retry_resp = await loop.run_in_executor(None, _call)
+                response_json = retry_resp.json()
+                if "choices" not in response_json:
+                    logger.error(f"Retry also failed: {str(response_json)[:400]}")
+                    return "I'll be right with you! Please resend your message in about 10 seconds and I'll get back to you right away."
+            else:
+                return "I'll be right with you! Please resend your message in about 10 seconds and I'll get back to you right away."
+        reply = response_json["choices"][0]["message"]["content"]
+        conversations[user_id].append({"role": "assistant", "content": reply})
+        return reply
+    except Exception as e:
+        import traceback
+        logger.error(f"OpenAI error type={type(e).__name__} msg={e}")
+        logger.error(traceback.format_exc())
+        return "I'll be right with you! Please resend your message in about 10 seconds and I'll get back to you right away."
 
 
 def transcribe_voice(file_path: str) -> str:
-try:
-with open(file_path, "rb") as f:
-resp = requests.post(
-"https://api.openai.com/v1/audio/transcriptions",
-headers=\{"Authorization": f"Bearer \{OPENAI_API_KEY\}"\},
-files=\{"file": ("voice.ogg", f, "audio/ogg")\},
-data=\{"model": "whisper-1"\},
-timeout=30
-)
-return resp.json().get("text", "")
-except Exception as e:
-logger.error(f"Transcription error: \{e\}")
-return ""
+    try:
+        with open(file_path, "rb") as f:
+            resp = requests.post(
+                "https://api.openai.com/v1/audio/transcriptions",
+                headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                files={"file": ("voice.ogg", f, "audio/ogg")},
+                data={"model": "whisper-1"},
+                timeout=30
+            )
+        return resp.json().get("text", "")
+    except Exception as e:
+        logger.error(f"Transcription error: {e}")
+        return ""
 
 
 def analyze_image(image_path: str, context_text: str) -> str:
-try:
-with open(image_path, "rb") as f:
-img_b64 = base64.b64encode(f.read()).decode()
-resp = requests.post(
-"https://api.openai.com/v1/chat/completions",
-headers=\{"Authorization": f"Bearer \{OPENAI_API_KEY\}", "Content-Type": "application/json"\},
-json=\{
-"model": "gpt-4o",
-"messages": [
-\{"role": "system", "content": SYSTEM_PROMPT\},
-\{"role": "user", "content": [
-\{"type": "text", "text": f"The user sent this screenshot. Recent conversation: \{context_text\}\\ it and tell them exactly what to do next. Be short and specific."\},
-\{"type": "image_url", "image_url": \{"url": f"data:image/jpeg;base64,\{img_b64\}"\}\}
-]\}
-],
-"max_tokens": 350
-\},
-timeout=30
-)
-return resp.json()["choices"][0]["message"]["content"]
-except Exception as e:
-logger.error(f"Image analysis error: \{e\}")
-return "Could not analyze the image. Please describe what you see and I will help."
+    try:
+        with open(image_path, "rb") as f:
+            img_b64 = base64.b64encode(f.read()).decode()
+        resp = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": [
+                        {"type": "text", "text": f"The user sent this screenshot. Recent conversation: {context_text}\n\nAnalyze it and tell them exactly what to do next. Be short and specific."},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
+                    ]}
+                ],
+                "max_tokens": 350
+            },
+            timeout=30
+        )
+        return resp.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        logger.error(f"Image analysis error: {e}")
+        return "Could not analyze the image. Please describe what you see and I will help."
 
 
 def should_show_commission_image(text: str) -> bool:
-# Only show for commission/agent questions, NOT investment/earnings questions
-commission_keywords = [
-"commission", "provision", "struktur", "structure",
-"referral", "agent werden", "become agent", "partner werden",
-"provisi", "empfehlen", "refer", "level 1", "level 2",
-"how do i earn as agent", "wie verdiene ich als agent",
-"how does the referral", "wie funktioniert die provision"
-]
-return any(kw in text.lower() for kw in commission_keywords)
+    # Only show for commission/agent questions, NOT investment/earnings questions
+    commission_keywords = [
+        "commission", "provision", "struktur", "structure",
+        "referral", "agent werden", "become agent", "partner werden",
+        "provisi", "empfehlen", "refer", "level 1", "level 2",
+        "how do i earn as agent", "wie verdiene ich als agent",
+        "how does the referral", "wie funktioniert die provision"
+    ]
+    return any(kw in text.lower() for kw in commission_keywords)
 
 
 async def send_commission_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
-try:
-await context.bot.send_photo(
-chat_id=update.effective_chat.id,
-photo=COMMISSION_IMAGE_URL,
-caption="Bit28 - 5-Level Commission Structure", parse_mode="HTML"
-)
-context.user_data["commission_shown"] = True
-except Exception as e:
-logger.error(f"Failed to send commission image: \{e\}")
+    try:
+        await context.bot.send_photo(
+            chat_id=update.effective_chat.id,
+            photo=COMMISSION_IMAGE_URL,
+            caption="Bit28 - 5-Level Commission Structure", parse_mode="HTML"
+        )
+        context.user_data["commission_shown"] = True
+    except Exception as e:
+        logger.error(f"Failed to send commission image: {e}")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-keyboard = [[InlineKeyboardButton("Visit Bit28.io", url="https://bit28.io")]]
-welcome = (
-"Welcome to Bit28 Support.\\"
-"I am here to answer any questions about Bit28 - how it works, how to get started, "
-"or how to earn with our referral program.\\"
-"What would you like to know?"
-)
-await update.message.reply_text(welcome, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
+    keyboard = [[InlineKeyboardButton("Visit Bit28.io", url="https://bit28.io")]]
+    welcome = (
+        "Welcome to Bit28 Support.\n\n"
+        "I am here to answer any questions about Bit28 - how it works, how to get started, "
+        "or how to earn with our referral program.\n\n"
+        "What would you like to know?"
+    )
+    await update.message.reply_text(welcome, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
 
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-user = update.effective_user
-user_id = str(user.id)
-username = user.username or ""
-message = update.message.text
-msg_lower = message.lower()
+    user = update.effective_user
+    user_id = str(user.id)
+    username = user.username or ""
+    message = update.message.text
+    msg_lower = message.lower()
 
-lock = get_user_lock(user_id)
+    lock = get_user_lock(user_id)
 
-if lock.locked():
-# Bot is busy processing a previous message \'97 store latest message and return
-user_pending[user_id] = (update, context, message, msg_lower)
-return
+    if lock.locked():
+        # Bot is busy processing a previous message — store latest message and return
+        user_pending[user_id] = (update, context, message, msg_lower)
+        return
 
-async with lock:
-# Process current message
-await _handle_text_inner(update, context, user_id, username, message, msg_lower)
-# If a new message arrived while we were processing, handle it now
-while user_id in user_pending:
-pending = user_pending.pop(user_id)
-p_update, p_context, p_message, p_msg_lower = pending
-await _handle_text_inner(p_update, p_context, user_id, username, p_message, p_msg_lower)
+    async with lock:
+        # Process current message
+        await _handle_text_inner(update, context, user_id, username, message, msg_lower)
+        # If a new message arrived while we were processing, handle it now
+        while user_id in user_pending:
+            pending = user_pending.pop(user_id)
+            p_update, p_context, p_message, p_msg_lower = pending
+            await _handle_text_inner(p_update, p_context, user_id, username, p_message, p_msg_lower)
 
 async def _handle_text_inner(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str, username: str, message: str, msg_lower: str):
-# Send commission image once at the start of a commission conversation
-commission_trigger_keywords = [
-"commission", "provision", "struktur", "structure", "levels", "ebenen",
-"referral", "agent werden", "become agent", "partner werden",
-"provisi", "wie verdiene ich als agent", "how do i earn as agent",
-"how does the referral", "wie funktioniert die provision",
-"level 1", "level 2", "5-level", "5 level"
-]
-is_commission_question = any(kw in msg_lower for kw in commission_trigger_keywords)
-if is_commission_question and not context.user_data.get("commission_shown"):
-await send_commission_image(update, context)
+    # Send commission image once at the start of a commission conversation
+    commission_trigger_keywords = [
+        "commission", "provision", "struktur", "structure", "levels", "ebenen",
+        "referral", "agent werden", "become agent", "partner werden",
+        "provisi", "wie verdiene ich als agent", "how do i earn as agent",
+        "how does the referral", "wie funktioniert die provision",
+        "level 1", "level 2", "5-level", "5 level"
+    ]
+    is_commission_question = any(kw in msg_lower for kw in commission_trigger_keywords)
+    if is_commission_question and not context.user_data.get("commission_shown"):
+        await send_commission_image(update, context)
 
-reply = await chat_with_openai(user_id, message)
-try:
-await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
-except Exception:
-# Fallback: strip HTML tags and send as plain text
-import re
-plain = re.sub(r'<[^>]+>', '', reply)
-await update.message.reply_text(plain)
+    reply = await chat_with_openai(user_id, message)
+    try:
+        await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
+    except Exception:
+        # Fallback: strip HTML tags and send as plain text
+        import re
+        plain = re.sub(r'<[^>]+>', '', reply)
+        await update.message.reply_text(plain)
 
-# Extract lead data: always after 4+ messages, or immediately if we already have a lead ID
-convo_len = len(conversations.get(user_id, []))
-has_existing_lead = bool(agent_lead_data.get(user_id, \{\}).get("id"))
-agent_keywords = ["agent", "register", "registri", "provision", "commission", "referral",
-"empfehlen", "partner", "join", "become", "werden", "verdien", "earn",
-"anmeld", "name", "email", "vantage", "user id", "user-id", "einladung",
-"referred", "empfohlen", "wie viele", "how many", "einzahlung", "deposit"]
-should_extract = (
-has_existing_lead or
-any(kw in msg_lower for kw in agent_keywords) or
-convo_len >= 4
-)
-if should_extract:
-extract_and_save_lead(user_id, username)
-if convo_len % 6 == 0:
-analyze_and_save_chat(user_id, username)
+    # Extract lead data: always after 4+ messages, or immediately if we already have a lead ID
+    convo_len = len(conversations.get(user_id, []))
+    has_existing_lead = bool(agent_lead_data.get(user_id, {}).get("id"))
+    agent_keywords = ["agent", "register", "registri", "provision", "commission", "referral",
+                      "empfehlen", "partner", "join", "become", "werden", "verdien", "earn",
+                      "anmeld", "name", "email", "vantage", "user id", "user-id", "einladung",
+                      "referred", "empfohlen", "wie viele", "how many", "einzahlung", "deposit"]
+    should_extract = (
+        has_existing_lead or
+        any(kw in msg_lower for kw in agent_keywords) or
+        convo_len >= 4
+    )
+    if should_extract:
+        extract_and_save_lead(user_id, username)
+    if convo_len % 6 == 0:
+        analyze_and_save_chat(user_id, username)
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-user = update.effective_user
-user_id = str(user.id)
-username = user.username or ""
-async with get_user_lock(user_id):
-photo = update.message.photo[-1]
-file = await context.bot.get_file(photo.file_id)
-with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-await file.download_to_drive(tmp.name)
-recent = conversations.get(user_id, [])[-6:]
-context_text = " | ".join([m["content"] for m in recent if isinstance(m["content"], str)])
-reply = analyze_image(tmp.name, context_text)
-conversations.setdefault(user_id, []).append(\{"role": "user", "content": "[sent a screenshot]"\})
-conversations[user_id].append(\{"role": "assistant", "content": reply\})
-try:
-await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
-except Exception:
-import re
-plain = re.sub(r'<[^>]+>', '', reply)
-await update.message.reply_text(plain)
-extract_and_save_lead(user_id, username)
+    user = update.effective_user
+    user_id = str(user.id)
+    username = user.username or ""
+    async with get_user_lock(user_id):
+        photo = update.message.photo[-1]
+        file = await context.bot.get_file(photo.file_id)
+        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+            await file.download_to_drive(tmp.name)
+            recent = conversations.get(user_id, [])[-6:]
+            context_text = " | ".join([m["content"] for m in recent if isinstance(m["content"], str)])
+            reply = analyze_image(tmp.name, context_text)
+        conversations.setdefault(user_id, []).append({"role": "user", "content": "[sent a screenshot]"})
+        conversations[user_id].append({"role": "assistant", "content": reply})
+        try:
+            await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
+        except Exception:
+            import re
+            plain = re.sub(r'<[^>]+>', '', reply)
+            await update.message.reply_text(plain)
+        extract_and_save_lead(user_id, username)
 
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-user = update.effective_user
-user_id = str(user.id)
-username = user.username or ""
-async with get_user_lock(user_id):
-await _handle_voice_inner(update, context, user_id, username)
+    user = update.effective_user
+    user_id = str(user.id)
+    username = user.username or ""
+    async with get_user_lock(user_id):
+        await _handle_voice_inner(update, context, user_id, username)
 
 async def _handle_voice_inner(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: str, username: str):
 
-voice = update.message.voice
-file = await context.bot.get_file(voice.file_id)
+    voice = update.message.voice
+    file = await context.bot.get_file(voice.file_id)
 
-with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp:
-await file.download_to_drive(tmp.name)
-transcribed = transcribe_voice(tmp.name)
+    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp:
+        await file.download_to_drive(tmp.name)
+        transcribed = transcribe_voice(tmp.name)
 
-if not transcribed:
-await update.message.reply_text("Could not transcribe your voice message. Please type your question.", parse_mode="HTML")
-return
+    if not transcribed:
+        await update.message.reply_text("Could not transcribe your voice message. Please type your question.", parse_mode="HTML")
+        return
 
-reply = await chat_with_openai(user_id, transcribed)
-try:
-await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
-except Exception:
-import re
-plain = re.sub(r'<[^>]+>', '', reply)
-await update.message.reply_text(plain)
-extract_and_save_lead(user_id, username)
+    reply = await chat_with_openai(user_id, transcribed)
+    try:
+        await update.message.reply_text(sanitize_html(reply), parse_mode="HTML")
+    except Exception:
+        import re
+        plain = re.sub(r'<[^>]+>', '', reply)
+        await update.message.reply_text(plain)
+    extract_and_save_lead(user_id, username)
 
 
 async def main():
-logger.info("Bit28Support Bot starting with webhook...")
+    logger.info("Bit28Support Bot starting with webhook...")
 
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "https://cooperative-celebration-production-49f7.up.railway.app")
-PORT = int(os.environ.get("PORT", 8080))
+    WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "https://cooperative-celebration-production-49f7.up.railway.app")
+    PORT = int(os.environ.get("PORT", 8080))
 
-app = Application.builder().token(TELEGRAM_TOKEN).build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+    app = Application.builder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
-await app.initialize()
-await app.bot.set_webhook(
-url=f"\{WEBHOOK_URL\}/webhook",
-drop_pending_updates=True
-)
-logger.info(f"Webhook set to \{WEBHOOK_URL\}/webhook")
+    await app.initialize()
+    await app.bot.set_webhook(
+        url=f"{WEBHOOK_URL}/webhook",
+        drop_pending_updates=True
+    )
+    logger.info(f"Webhook set to {WEBHOOK_URL}/webhook")
 
-# aiohttp web server to receive webhook updates
-async def handle_webhook(request):
-data = await request.json()
-update = Update.de_json(data, app.bot)
-await app.process_update(update)
-return web.Response(text="OK")
+    # aiohttp web server to receive webhook updates
+    async def handle_webhook(request):
+        data = await request.json()
+        update = Update.de_json(data, app.bot)
+        await app.process_update(update)
+        return web.Response(text="OK")
 
-async def handle_health(request):
-return web.Response(text="OK")
+    async def handle_health(request):
+        return web.Response(text="OK")
 
-web_app = web.Application()
-web_app.router.add_post("/webhook", handle_webhook)
-web_app.router.add_get("/", handle_health)
+    web_app = web.Application()
+    web_app.router.add_post("/webhook", handle_webhook)
+    web_app.router.add_get("/", handle_health)
 
-runner = web.AppRunner(web_app)
-await runner.setup()
-site = web.TCPSite(runner, "0.0.0.0", PORT)
-await site.start()
-logger.info(f"Server running on port \{PORT\}")
+    runner = web.AppRunner(web_app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", PORT)
+    await site.start()
+    logger.info(f"Server running on port {PORT}")
 
-await app.start()
-logger.info("Bot started. Listening for webhook updates...")
+    await app.start()
+    logger.info("Bot started. Listening for webhook updates...")
 
-# Keep running
-try:
-await asyncio.Event().wait()
-finally:
-await app.stop()
-await app.shutdown()
-await runner.cleanup()
+    # Keep running
+    try:
+        await asyncio.Event().wait()
+    finally:
+        await app.stop()
+        await app.shutdown()
+        await runner.cleanup()
 
 
 if __name__ == "__main__":
-asyncio.run(main())
-}
+    asyncio.run(main())
